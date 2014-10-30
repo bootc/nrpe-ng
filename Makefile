@@ -17,6 +17,10 @@
 
 all: pep8
 
+clean:
+	find $(CURDIR) -name .git -prune -o -name \*.pyc -type f -print0 | \
+		xargs -0 rm
+
 pep8:
 	pep8 --exclude=test $(CURDIR)
 
