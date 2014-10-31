@@ -21,7 +21,7 @@ import os
 import sys
 
 # Add our own library path to the import path
-libDir = os.path.join(os.path.dirname(__file__), 'lib')
+libDir = os.path.join(os.path.dirname(__file__), '..', 'lib')
 sys.path.append(libDir)
 
 from nrpe_ng.server import Server
