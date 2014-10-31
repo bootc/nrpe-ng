@@ -24,11 +24,11 @@ import sys
 from nrpe_ng.commands import Command
 from nrpe_ng.config import NrpeConfigParser
 from nrpe_ng.defaults import CONFIG_DEFAULTS
+from nrpe_ng.http import NrpeHTTPServer
 from nrpe_ng.syslog import SyslogHandler, facility as syslog_facility
 
 # TODO:
 # forking (and pid_file)
-# network socket (server_port, server_address)
 # ch{u,g}id (nrpe_user, nrpe_group)
 # simple ACLs (allowed_hosts)
 # command arguments (dont_blame_nrpe)
@@ -165,3 +165,10 @@ class Server:
             import pprint
             pp = pprint.PrettyPrinter(indent=4)
             pp.pprint(self.__dict__)
+
+        httpd = NrpeHTTPServer(self)
+
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            httpd.server_close()

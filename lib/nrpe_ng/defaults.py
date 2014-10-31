@@ -18,8 +18,8 @@
 CONFIG_DEFAULTS = {
     'allow_bash_command_substitution': False,
     'allowed_hosts': '',
-    'command_timeout': 60,
     'command_prefix': '',
+    'command_timeout': 60,
     'connection_timeout': 300,
     'debug': False,
     'dont_blame_nrpe': False,
@@ -28,5 +28,9 @@ CONFIG_DEFAULTS = {
     'nrpe_user': 'nagios',
     'pid_file': '/run/nagios/nrpe.pid',
     'server_address': '::',
-    'server_port': '5666',
+    'server_port': 5666,
+    'ssl_verify_client': False,
+    'ssl_ca_file': '',
+    'ssl_cert_file': '',
+    'ssl_key_file': '',
 }
