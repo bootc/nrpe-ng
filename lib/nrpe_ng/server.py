@@ -46,8 +46,12 @@ class Server:
         epilog = """
         Copyright (C) 2014  Chris Boot <bootc@bootc.net>
         """
-        parser = argparse.ArgumentParser(
-            prog='nrpe-ng-server', description=self.__doc__, epilog=epilog)
+        parser = argparse.ArgumentParser(description=self.__doc__,
+                                         epilog=epilog)
+        parser.add_argument('--version', action='version',
+                            version=nrpe_ng.VERSION)
+        parser.add_argument('--debug', action='store_true',
+                            help='print verbose debugging information')
         parser.add_argument('-c', dest='config_file', required=True,
                             help='use the given configuration file')
         parser.add_argument('-d', action='store_true', dest='daemon',
@@ -55,10 +59,6 @@ class Server:
                             help='run as a standalone daemon (default)')
         parser.add_argument('-f', action='store_false', dest='daemon',
                             help='do not fork into the background')
-        parser.add_argument('--debug', action='store_true',
-                            help='print verbose debugging information')
-        parser.add_argument('--version', action='version',
-                            version=nrpe_ng.VERSION)
 
         self.argparser = parser
 
