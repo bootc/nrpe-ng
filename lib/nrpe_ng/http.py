@@ -95,7 +95,8 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
 
         # Wrap the socket
         self.raw_socket = self.socket
-        self.socket = ssl_context.wrap_socket(self.raw_socket, server_side=True)
+        self.socket = ssl_context.wrap_socket(self.raw_socket,
+                                              server_side=True)
 
         # Now start listening
         self.server_activate()
