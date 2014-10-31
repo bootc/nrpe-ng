@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 # This file is part of nrpe-ng.
 # Copyright (C) 2014  Chris Boot <bootc@bootc.net>
 #
@@ -15,34 +17,15 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-PORT = 59546
-EXEC_PATH = '/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin'
+import os
+import sys
 
-CLIENT_CONFIG = {
-    'port': 59546,
-    'timeout': 10,
-    'ssl_verify_server': True,
-    'ssl_ca_file': '',
-    'ssl_cert_file': '',
-    'ssl_key_file': '',
-}
+# Add our own library path to the import path
+libDir = os.path.join(os.path.dirname(__file__), '..', 'lib')
+sys.path.append(libDir)
 
-SERVER_CONFIG = {
-    'allow_bash_command_substitution': False,
-    'allowed_hosts': '',
-    'command_prefix': '',
-    'command_timeout': 60,
-    'connection_timeout': 300,
-    'debug': False,
-    'dont_blame_nrpe': False,
-    'log_facility': 'daemon',
-    'nrpe_group': 'nagios',
-    'nrpe_user': 'nagios',
-    'pid_file': '/run/nagios/nrpe.pid',
-    'server_address': '::',
-    'server_port': PORT,
-    'ssl_verify_client': False,
-    'ssl_ca_file': '',
-    'ssl_cert_file': '',
-    'ssl_key_file': '',
-}
+from nrpe_ng.client import Client
+cmd = Client()
+
+retval = cmd.run()
+sys.exit(retval)

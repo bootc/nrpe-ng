@@ -23,7 +23,7 @@ import sys
 
 from nrpe_ng.commands import Command
 from nrpe_ng.config import NrpeConfigParser
-from nrpe_ng.defaults import CONFIG_DEFAULTS
+from nrpe_ng.defaults import SERVER_CONFIG
 from nrpe_ng.http import NrpeHTTPServer
 from nrpe_ng.syslog import SyslogHandler, facility as syslog_facility
 
@@ -71,13 +71,13 @@ class Server:
     def parse_config(self, config_file):
         """
         Parse the given config file as a pseudo-ini file. Options that have
-        default values in nrpe_ng.defaults.CONFIG_DEFAULTS are copied in as
+        default values in nrpe_ng.defaults.SERVER_CONFIG are copied in as
         attributes of this object, keeping their type intact.
 
         Additionally, NRPE command[] options are also parsed, and
         nrpe_ng.commands.Command objects are created for each found command.
         """
-        config = NrpeConfigParser(CONFIG_DEFAULTS)
+        config = NrpeConfigParser(SERVER_CONFIG)
         secname = config.main_section  # default ini "section" for all config
 
         try:
@@ -90,13 +90,13 @@ class Server:
             sys.exit(1)
 
         # Set local attributes based on configuration values in a type-aware
-        # fashion, based on the type of the value in CONFIG_DEFAULTS
-        for key in CONFIG_DEFAULTS:
+        # fashion, based on the type of the value in SERVER_CONFIG
+        for key in SERVER_CONFIG:
             # Skip already-set attributes
             if hasattr(self, key):
                 continue
 
-            dt = type(CONFIG_DEFAULTS[key])
+            dt = type(SERVER_CONFIG[key])
 
             if dt is bool:  # is it a bool?
                 # handle boolean defaults; getboolean() fails if the value is
