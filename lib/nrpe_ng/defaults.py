@@ -28,7 +28,7 @@ CONFIG_DEFAULTS = {
     'nrpe_user': 'nagios',
     'pid_file': '/run/nagios/nrpe.pid',
     'server_address': '::',
-    'server_port': 5666,
+    'server_port': 59546,
     'ssl_verify_client': False,
     'ssl_ca_file': '',
     'ssl_cert_file': '',
