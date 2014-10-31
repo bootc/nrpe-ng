@@ -99,7 +99,11 @@ class Server:
             dt = type(CONFIG_DEFAULTS[key])
 
             if dt is bool:  # is it a bool?
-                value = config.getboolean(secname, key)
+                # handle boolean defaults; getboolean() fails if the value is
+                # already boolean (e.g. straight from defaults, not overridden)
+                value = config.get(secname, key)
+                if type(value) is not bool:
+                    value = config.getboolean(secname, key)
             elif dt is int:  # is it an int?
                 value = config.getint(secname, key)
             else:  # everything else is a string
