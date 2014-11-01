@@ -89,6 +89,12 @@ class Server:
                     config_file))
             sys.exit(1)
 
+        # Handle the 'debug' specially
+        if not self.debug:
+            self.debug = config.get(secname, 'debug')
+            if type(self.debug) is not bool:
+                self.debug = config.getboolean(secname, 'debug')
+
         # Set local attributes based on configuration values in a type-aware
         # fashion, based on the type of the value in SERVER_CONFIG
         for key in SERVER_CONFIG:
