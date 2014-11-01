@@ -1,0 +1,20 @@
+Source: nrpe-ng
+Maintainer: Chris Boot <debian@bootc.net>
+Section: python
+Priority: optional
+Build-Depends: python-all (>= 2.6.6-3), debhelper (>= 9)
+Standards-Version: 3.9.6
+Homepage: https://github.com/bootc/nrpe-ng
+Vcs-Browser: https://github.com/bootc/nrpe-ng
+Vcs-Git: git://github.com/bootc/nrpe-ng.git
+
+Package: python-nrpe-ng
+Architecture: all
+Depends: ${misc:Depends}, ${python:Depends}
+Description: Next-generation Nagios remote plugin agent
+ Nagios is a host/service/network monitoring and management system.
+ .
+ This is a rewrite from the ground up of NRPE, a Nagios remote plugin agent.
+ This set of programs allows you to run Nagios check scripts on a remote host
+ in a transparent and secure manner.
+

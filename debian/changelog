@@ -1,0 +1,5 @@
+nrpe-ng (0.0.1~dev0-1) unstable; urgency=low
+
+  * source package automatically created by stdeb 0.8.2
+
+ -- Chris Boot <debian@bootc.net>  Sat, 01 Nov 2014 15:29:26 +0000

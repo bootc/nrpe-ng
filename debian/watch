@@ -1,0 +1,4 @@
+version=3
+opts=filenamemangle=s/.+\/v?(\d\S*)\.tar\.gz/nrpe-ng-$1\.tar\.gz/ \
+  https://github.com/bootc/nrpe-ng/tags .*/v?(\d\S*)\.tar\.gz
+
