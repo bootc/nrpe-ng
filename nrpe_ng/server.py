@@ -33,11 +33,6 @@ from nrpe_ng.defaults import SERVER_CONFIG
 from nrpe_ng.http import NrpeHTTPServer
 from nrpe_ng.syslog import SyslogHandler, facility as syslog_facility
 
-# TODO:
-# simple ACLs (allowed_hosts)
-# command prefix (command_prefix)
-# command timeout (command_timeout)
-# networking timeout (connection_timeout)
 
 log = nrpe_ng.log
 

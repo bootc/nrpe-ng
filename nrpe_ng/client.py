@@ -34,10 +34,6 @@ NAGIOS_UNKNOWN = 3
 
 log = nrpe_ng.log
 
-# TODO:
-# verify server setting (ssl_verify_server)
-# timeouts
-
 
 class Client:
     """nrpe-ng: the next generation Nagios Remote Plugin Executor"""
