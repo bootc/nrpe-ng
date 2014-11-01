@@ -139,34 +139,46 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
 
         # Figure out the arguments we need to pass to socket.socket()
         address = None
-        for res in socket.getaddrinfo(
-                nrpe_server.server_address, nrpe_server.server_port,
-                socket.AF_UNSPEC, socket.SOCK_STREAM, socket.IPPROTO_TCP,
-                socket.AI_PASSIVE):
+        try:
+            for res in socket.getaddrinfo(
+                    nrpe_server.server_address, nrpe_server.server_port,
+                    socket.AF_UNSPEC, socket.SOCK_STREAM, socket.IPPROTO_TCP,
+                    socket.AI_PASSIVE):
 
-            af, socktype, proto, canonname, sa = res
+                af, socktype, proto, canonname, sa = res
 
-            if af in [socket.AF_INET, socket.AF_INET6]:
-                self.address_family = af
-                address = sa
-                break
+                if af in [socket.AF_INET, socket.AF_INET6]:
+                    self.address_family = af
+                    address = sa
+                    break
+        except socket.gaierror:
+            pass  # let the condition below take care of the error
 
         if not address:
-            log.error('failed to find a suitable socket for host %(host)s '
-                      'port %(port), aborting',
-                      host=nrpe_server.server_address,
-                      port=nrpe_server.server_port)
+            log.error('failed to find a suitable socket for host {host} '
+                      'port {port}, aborting'.format(
+                          host=nrpe_server.server_address,
+                          port=nrpe_server.server_port))
             sys.exit(1)
 
         # Set up the HTTPServer instance, creating a a listening socket
         HTTPServer.__init__(self, address, RequestHandlerClass,
                             bind_and_activate=False)
-        self.server_bind()
+
+        try:
+            self.server_bind()
+        except socket.error, e:
+            log.error('failed to bind socket: {}'.format(e.args[1]))
+            sys.exit(1)
 
         # Set up the SSL context
-        ssl_context = ssl.create_default_context(
-            purpose=ssl.Purpose.CLIENT_AUTH,
-            cafile=nrpe_server.ssl_ca_file)
+        try:
+            ssl_context = ssl.create_default_context(
+                purpose=ssl.Purpose.CLIENT_AUTH,
+                cafile=nrpe_server.ssl_ca_file)
+        except IOError, e:
+            log.error('cannot read ssl_ca_file: {}'.format(e.args[1]))
+            sys.exit(1)
         self.ssl_context = ssl_context
 
         # Enable client certificate verification if wanted
@@ -174,8 +186,14 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
             ssl_context.verify_mode = ssl.CERT_REQUIRED
 
         # Load our own certificate into the server
-        ssl_context.load_cert_chain(certfile=nrpe_server.ssl_cert_file,
-                                    keyfile=nrpe_server.ssl_key_file)
+        try:
+            ssl_context.load_cert_chain(
+                certfile=nrpe_server.ssl_cert_file,
+                keyfile=nrpe_server.ssl_key_file)
+        except IOError, e:
+            log.error('cannot read ssl_cert_file or ssl_key_file: {}'
+                      .format(e.args[1]))
+            sys.exit(1)
 
         # Wrap the socket
         self.raw_socket = self.socket

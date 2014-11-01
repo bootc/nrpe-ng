@@ -16,9 +16,15 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import argparse
+import daemon
+import daemon.runner
+import grp
+import lockfile
 import logging
 import nrpe_ng
+import pwd
 import re
+import signal
 import sys
 
 from nrpe_ng.commands import Command
@@ -28,10 +34,7 @@ from nrpe_ng.http import NrpeHTTPServer
 from nrpe_ng.syslog import SyslogHandler, facility as syslog_facility
 
 # TODO:
-# forking (and pid_file)
-# ch{u,g}id (nrpe_user, nrpe_group)
 # simple ACLs (allowed_hosts)
-# command arguments (dont_blame_nrpe)
 # command prefix (command_prefix)
 # command timeout (command_timeout)
 # networking timeout (connection_timeout)
@@ -47,14 +50,14 @@ class Server:
         Copyright (C) 2014  Chris Boot <bootc@bootc.net>
         """
         parser = argparse.ArgumentParser(description=self.__doc__,
-                                         epilog=epilog)
-        parser.add_argument('--version', action='version',
-                            version=nrpe_ng.VERSION)
+                                         epilog=epilog,
+                                         version=nrpe_ng.VERSION)
         parser.add_argument('--debug', action='store_true',
                             help='print verbose debugging information')
-        parser.add_argument('-c', dest='config_file', required=True,
+        parser.add_argument('-c', '--config', dest='config_file',
+                            required=True,
                             help='use the given configuration file')
-        parser.add_argument('-d', action='store_true', dest='daemon',
+        parser.add_argument('-d', '--daemon', action='store_true',
                             default=True,
                             help='run as a standalone daemon (default)')
         parser.add_argument('-f', action='store_false', dest='daemon',
@@ -109,9 +112,20 @@ class Server:
                 # already boolean (e.g. straight from defaults, not overridden)
                 value = config.get(secname, key)
                 if type(value) is not bool:
-                    value = config.getboolean(secname, key)
+                    try:
+                        value = config.getboolean(secname, key)
+                    except ValueError:
+                        log.error("invalid {key}, expected a boolean but got "
+                                  "'{val}'".format(key=key, val=value))
+                        sys.exit(1)
             elif dt is int:  # is it an int?
-                value = config.getint(secname, key)
+                try:
+                    value = config.getint(secname, key)
+                except ValueError:
+                    log.error(
+                        "invalid {key}, expected an integer but got '{val}'"
+                        .format(key=key, val=config.get(secname, key)))
+                    sys.exit(1)
             else:  # everything else is a string
                 value = str(config.get(secname, key))
 
@@ -131,7 +145,12 @@ class Server:
 
         self.commands = commands
 
+    def reload_config(signal_number, stack_frame):
+        raise NotImplemented()
+
     def setup_logging(self):
+        log.setLevel(logging.INFO)
+
         # Add a syslog handler with default values
         syslog = SyslogHandler(ident=nrpe_ng.PROG,
                                facility=syslog_facility('daemon'))
@@ -143,23 +162,59 @@ class Server:
         log.addHandler(console)
 
     def setup(self):
-        # Update the syslog facility from the config file
-        self.log_syslog.facility = syslog_facility(self.log_facility)
-
         # In debug mode:
         # - don't send output to syslog
-        # - set the log level to DEBUG
-        # - don't fork by default
+        # - set the log level to DEBUG if we're not daemonising
         if self.debug:
-            log.removeHandler(self.log_syslog)
             log.setLevel(logging.DEBUG)
-            self.daemon = False
+            if not self.daemon:
+                log.removeHandler(self.log_syslog)
+
+        # Update the syslog facility from the config file
+        try:
+            self.log_syslog.facility = syslog_facility(self.log_facility)
+        except ValueError:
+            log.error('invalid log_facility: {}'.format(self.log_facility))
+            sys.exit(1)
 
         # We don't allow bash-style command substitution at all, it's bad
         if self.allow_bash_command_substitution:
             log.error('bash-style command substitution is not supported, '
                       'aborting.')
             sys.exit(1)
+
+        # Determine the uid and gid to change to
+        try:
+            nrpe_uid = pwd.getpwnam(self.nrpe_user).pw_uid
+        except KeyError:
+            log.error('invalid nrpe_user: {}'.format(self.nrpe_user))
+            sys.exit(1)
+        try:
+            nrpe_gid = grp.getgrnam(self.nrpe_group).gr_gid
+        except KeyError:
+            log.error('invalid nrpe_group: {}'.format(self.nrpe_group))
+            sys.exit(1)
+
+        # Prepare PID file
+        pidfile = daemon.runner.make_pidlockfile(self.pid_file, 0)
+        if daemon.runner.is_pidfile_stale(pidfile):
+            self.pidfile.break_lock()
+
+        # Prepare Daemon Context
+        dctx = daemon.DaemonContext(
+            pidfile=pidfile,
+            detach_process=self.daemon,
+            uid=nrpe_uid, gid=nrpe_gid,
+        )
+        dctx.signal_map.update({
+            signal.SIGHUP: self.reload_config,
+        })
+        self.daemon_context = dctx
+
+        # If we are not daemonising, don't redirect stdout or stderr
+        if not self.daemon:
+            dctx.stdout = sys.stdout
+            dctx.stderr = sys.stderr
 
     def run(self):
         self.parse_args()
@@ -174,7 +229,27 @@ class Server:
 
         httpd = NrpeHTTPServer(self)
 
+        if not self.daemon_context.files_preserve:
+            self.daemon_context.files_preserve = []
+        self.daemon_context.files_preserve.extend([
+            httpd.socket,
+        ])
+
+        log.info('server listening on {addr} port {port}'.format(
+            addr=httpd.server_address[0],
+            port=httpd.server_address[1]))
+
         try:
-            httpd.serve_forever()
+            with self.daemon_context:
+                log.info('listening for connections')
+                httpd.serve_forever()
         except KeyboardInterrupt:
+            sys.exit(0)
+        except lockfile.AlreadyLocked:
+            log.error('there is already another process running (PID {})'
+                      .format(self.daemon_context.pidfile.read_pid()))
+            sys.exit(1)
+        finally:
+            log.warning('shutting down')
             httpd.server_close()
+            self.daemon_context.close()
