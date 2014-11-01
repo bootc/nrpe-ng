@@ -21,7 +21,7 @@ from setuptools import setup
 
 setup(
     name='nrpe-ng',
-    version='0.0.2-dev',
+    version='0.0.2-dev1',
     description='Next-generation Nagios remote plugin agent',
     author='Chris Boot',
     author_email='bootc@bootc.net',
@@ -36,8 +36,9 @@ setup(
     ],
     packages=['nrpe_ng'],
     install_requires=[
-        'python-daemon',
         'lockfile',
+        'python-daemon',
+        'setuptools',
     ],
     entry_points={
         'console_scripts': [

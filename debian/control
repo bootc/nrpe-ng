@@ -11,7 +11,7 @@ Vcs-Git: git://github.com/bootc/nrpe-ng.git
 
 Package: python-nrpe-ng
 Architecture: all
-Depends: ${misc:Depends}, ${python:Depends}
+Depends: ${misc:Depends}, ${python:Depends}, python-setuptools
 Recommends: ssl-cert
 Description: Next-generation Nagios remote plugin agent
  Nagios is a host/service/network monitoring and management system.
