@@ -1,0 +1,11 @@
+[Unit]
+Description=The next generation Nagios Remote Plugin Executor
+
+[Service]
+Type=forking
+PIDFile=/run/nagios/nrpe-ng.pid
+ExecStart=/usr/sbin/nrpe-ng --config /etc/nagios/nrpe-ng.cfg --daemon
+
+[Install]
+Alias=nrpe-ng.service
+WantedBy=multi-user.target
