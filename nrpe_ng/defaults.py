@@ -19,7 +19,7 @@ PORT = 59546
 EXEC_PATH = '/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin'
 
 CLIENT_CONFIG = {
-    'port': 59546,
+    'port': PORT,
     'timeout': 10,
     'ssl_verify_server': True,
     'ssl_ca_file': '',
@@ -38,7 +38,7 @@ SERVER_CONFIG = {
     'log_facility': 'daemon',
     'nrpe_group': 'nagios',
     'nrpe_user': 'nagios',
-    'pid_file': '/run/nagios/nrpe.pid',
+    'pid_file': '/run/nagios/nrpe-ng.pid',
     'server_address': '::',
     'server_port': PORT,
     'ssl_verify_client': False,
