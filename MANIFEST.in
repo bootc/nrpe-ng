@@ -4,3 +4,4 @@ include config/nrpe-ng.cfg
 include COPYING
 include Makefile
 include README.md
+include TODO.md
