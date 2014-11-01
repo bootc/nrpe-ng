@@ -35,6 +35,10 @@ setup(
         'Topic :: System :: Systems Administration',
     ],
     packages=['nrpe_ng'],
+    install_requires=[
+        'python-daemon',
+        'lockfile',
+    ],
     entry_points={
         'console_scripts': [
             'check_nrpe_ng = nrpe_ng.client:main',

@@ -2,7 +2,8 @@ Source: nrpe-ng
 Maintainer: Chris Boot <debian@bootc.net>
 Section: python
 Priority: optional
-Build-Depends: python-all (>= 2.6.6-3), debhelper (>= 9)
+Build-Depends: python-all (>= 2.6.6-3), debhelper (>= 9), dh-python,
+ python-setuptools
 Standards-Version: 3.9.6
 Homepage: https://github.com/bootc/nrpe-ng
 Vcs-Browser: https://github.com/bootc/nrpe-ng
