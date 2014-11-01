@@ -253,3 +253,6 @@ class Server:
             log.warning('shutting down')
             httpd.server_close()
             self.daemon_context.close()
+
+def main():
+    return Server().run()

@@ -205,3 +205,6 @@ class Client:
         result = int(response.getheader('X-NRPE-Result', NAGIOS_UNKNOWN))
         sys.stdout.write(data)
         sys.exit(result)
+
+def main():
+    return Client().run()
