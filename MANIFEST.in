@@ -1,3 +1,6 @@
+include config/check_nrpe_ng.cfg
+include config/nagios_check_nrpe_ng.cfg
+include config/nrpe-ng.cfg
 include COPYING
 include Makefile
 include README.md
