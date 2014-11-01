@@ -20,4 +20,4 @@ For the client only:
   * Execution timeout (`--timeout`)
   * Option to return UNKNOWN on timeout rather than CRITICAL (`-u`)
 
-# vi:ft=markdown
+<!-- vim: set ft=markdown : -->
