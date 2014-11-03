@@ -1,0 +1,20 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+configure)
+	# create nagios group if there isn't one already
+	if ! getent group nagios >/dev/null; then
+		addgroup --system nagios >/dev/null
+	fi
+
+	# create nagios user if there isn't one already
+	if ! getent passwd nagios >/dev/null; then
+		adduser --system --ingroup nagios --shell /usr/sbin/nologin \
+			--home /var/lib/nagios nagios >/dev/null
+	fi
+	;;
+esac
+
+#DEBHELPER#
+
