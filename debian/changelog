@@ -1,5 +1,6 @@
-nrpe-ng (0.0.2~dev1-2) unstable; urgency=low
+nrpe-ng (0.0.2-1) unstable; urgency=low
 
+  * FIXME: Placeholder until this package gets closer to being uploaded
   * source package automatically created by stdeb 0.8.2
 
  -- Chris Boot <debian@bootc.net>  Sat, 01 Nov 2014 15:29:26 +0000
