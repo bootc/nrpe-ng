@@ -203,6 +203,11 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
         # Now start listening
         self.server_activate()
 
+    def update_config(self, cfg):
+        self.cfg = cfg
+
+        # TODO: Can we update any of the SSL options?
+
 
 class HTTPSClientAuthConnection(HTTPSConnection):
     """

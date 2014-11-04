@@ -161,6 +161,7 @@ class Server:
 
         try:
             self.reload_config()
+            self.httpd.update_config(self.cfg)
         except ConfigError, e:
             log.error(e.args[0])
             log.error("config file '{}' contained errors, not updated".format(
@@ -224,6 +225,7 @@ class Server:
             pp.pprint(self.cfg._get_kwargs())
 
         httpd = NrpeHTTPServer(self.cfg)
+        self.httpd = httpd
 
         if not self.daemon_context.files_preserve:
             self.daemon_context.files_preserve = []
