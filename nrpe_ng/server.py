@@ -249,5 +249,9 @@ class Server:
             httpd.server_close()
             self.daemon_context.close()
 
+
 def main():
     return Server().run()
+
+if __name__ == "__main__":
+    main()

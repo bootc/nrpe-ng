@@ -202,5 +202,9 @@ class Client:
         sys.stdout.write(data)
         sys.exit(result)
 
+
 def main():
     return Client().run()
+
+if __name__ == "__main__":
+    main()
