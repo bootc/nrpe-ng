@@ -32,8 +32,8 @@ log = nrpe_ng.log
 
 class NrpeHandler(BaseHTTPRequestHandler):
     def setup(self):
-        self.allow_args = self.server.nrpe_server.dont_blame_nrpe
-        self.commands = self.server.nrpe_server.commands
+        self.allow_args = self.server.cfg.dont_blame_nrpe
+        self.commands = self.server.cfg.commands
         BaseHTTPRequestHandler.setup(self)
 
     # Regular expression for extracting the command to run
@@ -128,11 +128,11 @@ class NrpeHandler(BaseHTTPRequestHandler):
 
 
 class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
-    def __init__(self, nrpe_server, RequestHandlerClass=NrpeHandler):
-        self.nrpe_server = nrpe_server
+    def __init__(self, cfg, RequestHandlerClass=NrpeHandler):
+        self.cfg = cfg
 
         # Check we have a certificate and key defines
-        if not nrpe_server.ssl_cert_file or not nrpe_server.ssl_key_file:
+        if not cfg.ssl_cert_file or not cfg.ssl_key_file:
             log.error('a valid ssl_cert_file and ssl_key_file are required, '
                       'aborting')
             sys.exit(1)
@@ -141,7 +141,7 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
         address = None
         try:
             for res in socket.getaddrinfo(
-                    nrpe_server.server_address, nrpe_server.server_port,
+                    cfg.server_address, cfg.server_port,
                     socket.AF_UNSPEC, socket.SOCK_STREAM, socket.IPPROTO_TCP,
                     socket.AI_PASSIVE):
 
@@ -157,8 +157,8 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
         if not address:
             log.error('failed to find a suitable socket for host {host} '
                       'port {port}, aborting'.format(
-                          host=nrpe_server.server_address,
-                          port=nrpe_server.server_port))
+                          host=cfg.server_address,
+                          port=cfg.server_port))
             sys.exit(1)
 
         # Set up the HTTPServer instance, creating a a listening socket
@@ -175,21 +175,21 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
         try:
             ssl_context = ssl.create_default_context(
                 purpose=ssl.Purpose.CLIENT_AUTH,
-                cafile=nrpe_server.ssl_ca_file)
+                cafile=cfg.ssl_ca_file)
         except IOError, e:
             log.error('cannot read ssl_ca_file: {}'.format(e.args[1]))
             sys.exit(1)
         self.ssl_context = ssl_context
 
         # Enable client certificate verification if wanted
-        if nrpe_server.ssl_verify_client:
+        if cfg.ssl_verify_client:
             ssl_context.verify_mode = ssl.CERT_REQUIRED
 
         # Load our own certificate into the server
         try:
             ssl_context.load_cert_chain(
-                certfile=nrpe_server.ssl_cert_file,
-                keyfile=nrpe_server.ssl_key_file)
+                certfile=cfg.ssl_cert_file,
+                keyfile=cfg.ssl_key_file)
         except IOError, e:
             log.error('cannot read ssl_cert_file or ssl_key_file: {}'
                       .format(e.args[1]))
