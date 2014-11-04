@@ -31,7 +31,8 @@ setup(
         'Development Status :: 2 - Pre-Alpha',
         'Environment :: Console',
         'Intended Audience :: System Administrators',
-        'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
+        'License :: OSI Approved :: GNU General Public License v2 or later '
+            '(GPLv2+)',
         'Topic :: System :: Systems Administration',
     ],
     packages=['nrpe_ng'],
