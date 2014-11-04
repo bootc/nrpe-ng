@@ -22,7 +22,7 @@ import socket
 import sys
 import urllib
 
-from nrpe_ng.config import NrpeConfigParser
+from nrpe_ng.config import NrpeConfig, ConfigError
 from nrpe_ng.defaults import CLIENT_CONFIG
 from nrpe_ng.http import HTTPSClientAuthConnection
 
@@ -71,83 +71,46 @@ class Client:
 
         self.argparser = parser
 
-    def parse_args(self):
-        self.argparser.parse_args(namespace=self)
-
-    def parse_config(self, config_file):
-        """
-        Parse the given config file as a pseudo-ini file. Options that have
-        default values in CLIENT_CONFIG are copied in as attributes of this
-        object, keeping their type intact. Everything else is ignored.
-        """
-        config = NrpeConfigParser(CLIENT_CONFIG)
-        secname = config.main_section  # default ini "section" for all config
-
-        try:
-            if config_file:
-                with open(config_file) as fp:
-                    config.readfp(fp, config_file)
-            else:
-                config.add_section(secname)
-        except IOError:
-            log.exception(
-                "config file '{}' contained errors, aborting".format(
-                    config_file))
-            sys.exit(1)
-
-        # Set local attributes based on configuration values in a type-aware
-        # fashion, based on the type of the value in CLIENT_CONFIG
-        for key in CLIENT_CONFIG:
-            # Skip already-set attributes
-            if hasattr(self, key):
-                continue
-
-            dt = type(CLIENT_CONFIG[key])
-
-            if dt is bool:  # is it a bool?
-                # handle boolean defaults; getboolean() fails if the value is
-                # already boolean (e.g. straight from defaults, not overridden)
-                value = config.get(secname, key)
-                if type(value) is not bool:
-                    value = config.getboolean(secname, key)
-            elif dt is int:  # is it an int?
-                value = config.getint(secname, key)
-            else:  # everything else is a string
-                value = str(config.get(secname, key))
-
-            setattr(self, key, value)
-
     def setup_logging(self):
         # Add a console handler
         console = logging.StreamHandler()
         log.addHandler(console)
 
-    def setup(self):
-        # In debug mode, set the log level to DEBUG
-        # - don't fork by default
-        if self.debug:
-            log.setLevel(logging.DEBUG)
+    def parse_args(self):
+        args = self.argparser.parse_args()
 
         # Re-process args to flatten the list
-        if self.args:
-            self.args = [item for sublist in self.args for item in sublist]
+        if args.args:
+            args.args = [item for sublist in args.args for item in sublist]
+
+        self.args = args
+
+    def reload_config(self):
+        cfg = NrpeConfig(CLIENT_CONFIG, self.args, self.args.config_file)
+
+        # In debug mode, set the log level to DEBUG
+        # - don't fork by default
+        if cfg.debug:
+            log.setLevel(logging.DEBUG)
+
+        self.cfg = cfg
 
     def format_request(self):
         req = {
-            'url': '/v1/check/{}'.format(self.command),
+            'url': '/v1/check/{}'.format(self.cfg.command),
             'headers': {
                 'User-Agent': '{prog}/{ver}'.format(
                     prog=self.argparser.prog, ver=nrpe_ng.VERSION),
             }
         }
 
-        if self.args:
+        if self.cfg.args:
             # Convert the array of arguments into a dict of key=value pairs
             # Arguments of the form key=value are simply split up, but
             # arguments with no '=' are assigned to ARGx keys like NRPE does
             args = {}
             argn = 1
-            for arg in self.args:
+            for arg in self.cfg.args:
                 kv = arg.split('=', 2)
                 if len(kv) == 1:
                     key = 'ARG{}'.format(argn)
@@ -168,19 +131,26 @@ class Client:
         return req
 
     def run(self):
-        self.parse_args()
         self.setup_logging()
-        self.parse_config(self.config_file)
-        self.setup()
+        self.parse_args()
 
-        if self.debug:
+        try:
+            self.reload_config()
+        except ConfigError, e:
+            log.error(e.args[0])
+            log.error("config file '{}' contained errors, aborting".format(
+                self.args.config_file))
+            sys.exit(1)
+
+        if self.cfg.debug:
             import pprint
             pp = pprint.PrettyPrinter(indent=4)
-            pp.pprint(self.__dict__)
+            pp.pprint(self.cfg._get_kwargs())
 
         conn = HTTPSClientAuthConnection(
-            self.host, self.port, strict=True, ca_file=self.ssl_ca_file,
-            key_file=self.ssl_key_file, cert_file=self.ssl_cert_file)
+            self.cfg.host, self.cfg.port, strict=True,
+            ca_file=self.cfg.ssl_ca_file,
+            key_file=self.cfg.ssl_key_file, cert_file=self.cfg.ssl_cert_file)
 
         req = self.format_request()
 

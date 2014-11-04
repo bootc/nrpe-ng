@@ -28,13 +28,35 @@ import signal
 import sys
 
 from nrpe_ng.commands import Command
-from nrpe_ng.config import NrpeConfigParser
+from nrpe_ng.config import NrpeConfig, ConfigError
 from nrpe_ng.defaults import SERVER_CONFIG
 from nrpe_ng.http import NrpeHTTPServer
 from nrpe_ng.syslog import SyslogHandler, facility as syslog_facility
 
 
 log = nrpe_ng.log
+
+
+class ServerConfig(NrpeConfig):
+    # Regular expression for parsing command name options from the config file
+    CMD_RE = re.compile(r'^command\[(?P<cmd>[^]]+)\]$')
+
+    def read_extra_config(self, config, parsed):
+        secname = config.main_section  # default ini "section" for all config
+
+        # Parse the list of commands
+        commands = {}
+        for key in config.options(secname):
+            mo = self.CMD_RE.match(key)
+            if not mo:
+                continue
+
+            name = mo.group('cmd')
+            value = config.get(secname, key)
+            cmd = Command(value)
+            commands[name] = cmd
+
+        parsed.commands = commands
 
 
 class Server:
@@ -59,89 +81,7 @@ class Server:
                             help='do not fork into the background')
 
         self.argparser = parser
-
-    def parse_args(self):
-        self.argparser.parse_args(namespace=self)
-
-    # Regular expression for parsing command name options from the config file
-    CMD_RE = re.compile(r'^command\[(?P<cmd>[^]]+)\]$')
-
-    def parse_config(self, config_file):
-        """
-        Parse the given config file as a pseudo-ini file. Options that have
-        default values in nrpe_ng.defaults.SERVER_CONFIG are copied in as
-        attributes of this object, keeping their type intact.
-
-        Additionally, NRPE command[] options are also parsed, and
-        nrpe_ng.commands.Command objects are created for each found command.
-        """
-        config = NrpeConfigParser(SERVER_CONFIG)
-        secname = config.main_section  # default ini "section" for all config
-
-        try:
-            with open(config_file) as fp:
-                config.readfp(fp, config_file)
-        except IOError:
-            log.exception(
-                "config file '{}' contained errors, aborting".format(
-                    config_file))
-            sys.exit(1)
-
-        # Handle the 'debug' specially
-        if not self.debug:
-            self.debug = config.get(secname, 'debug')
-            if type(self.debug) is not bool:
-                self.debug = config.getboolean(secname, 'debug')
-
-        # Set local attributes based on configuration values in a type-aware
-        # fashion, based on the type of the value in SERVER_CONFIG
-        for key in SERVER_CONFIG:
-            # Skip already-set attributes
-            if hasattr(self, key):
-                continue
-
-            dt = type(SERVER_CONFIG[key])
-
-            if dt is bool:  # is it a bool?
-                # handle boolean defaults; getboolean() fails if the value is
-                # already boolean (e.g. straight from defaults, not overridden)
-                value = config.get(secname, key)
-                if type(value) is not bool:
-                    try:
-                        value = config.getboolean(secname, key)
-                    except ValueError:
-                        log.error("invalid {key}, expected a boolean but got "
-                                  "'{val}'".format(key=key, val=value))
-                        sys.exit(1)
-            elif dt is int:  # is it an int?
-                try:
-                    value = config.getint(secname, key)
-                except ValueError:
-                    log.error(
-                        "invalid {key}, expected an integer but got '{val}'"
-                        .format(key=key, val=config.get(secname, key)))
-                    sys.exit(1)
-            else:  # everything else is a string
-                value = str(config.get(secname, key))
-
-            setattr(self, key, value)
-
-        # Parse the list of commands
-        commands = {}
-        for key in config.options(secname):
-            mo = self.CMD_RE.match(key)
-            if not mo:
-                continue
-
-            name = mo.group('cmd')
-            value = config.get(secname, key)
-            cmd = Command(value)
-            commands[name] = cmd
-
-        self.commands = commands
-
-    def reload_config(signal_number, stack_frame):
-        raise NotImplemented()
+        self.cfg = None
 
     def setup_logging(self):
         log.setLevel(logging.INFO)
@@ -156,73 +96,134 @@ class Server:
         console = logging.StreamHandler()
         log.addHandler(console)
 
-    def setup(self):
-        # In debug mode:
-        # - don't send output to syslog
-        # - set the log level to DEBUG if we're not daemonising
-        if self.debug:
-            log.setLevel(logging.DEBUG)
-            if not self.daemon:
-                log.removeHandler(self.log_syslog)
+    def parse_args(self):
+        self.args = self.argparser.parse_args()
+
+    def reload_config(self):
+        immutable = [
+            'nrpe_group',
+            'nrpe_user',
+            'pid_file',
+            'server_address',
+            'server_port',
+            # FIXME: it would be nice if we _could_ change these:
+            'ssl_ca_file',
+            'ssl_cert_file',
+            'ssl_key_file',
+            'ssl_verify_client',
+        ]
+
+        cfg = ServerConfig(SERVER_CONFIG, self.args, self.args.config_file)
+
+        # We don't allow bash-style command substitution at all, it's bad
+        if cfg.allow_bash_command_substitution:
+            raise ConfigError(
+                'bash-style command substitution is not supported')
 
         # Update the syslog facility from the config file
         try:
-            self.log_syslog.facility = syslog_facility(self.log_facility)
+            log_facility = syslog_facility(cfg.log_facility)
         except ValueError:
-            log.error('invalid log_facility: {}'.format(self.log_facility))
-            sys.exit(1)
+            raise ConfigError(
+                'invalid log_facility: {}'.format(cfg.log_facility))
 
-        # We don't allow bash-style command substitution at all, it's bad
-        if self.allow_bash_command_substitution:
-            log.error('bash-style command substitution is not supported, '
-                      'aborting.')
-            sys.exit(1)
+        # Check for changes to variables we can't reload
+        if self.cfg:
+            for key in immutable:
+                if getattr(self.cfg, key) == getattr(cfg, key):
+                    continue
+                log.warning('value of {key} changed, but needs a restart to '
+                            'take effect'.format(key=key))
 
+        # !!! IMPORTANT: Beyond this point, no ConfigErrors should be raised
+
+        self.cfg = cfg
+
+        # Is the value of 'debug' changing?
+        if not self.cfg or self.cfg.debug != cfg.debug:
+            # In debug mode:
+            # - don't send output to syslog
+            # - set the log level to DEBUG if we're not daemonising
+            if cfg.debug:
+                log.setLevel(logging.DEBUG)
+                if not cfg.daemon:
+                    log.removeHandler(self.log_syslog)
+            else:
+                log.setLevel(logging.INFO)
+                if not cfg.daemon:
+                    log.addHandler(syslog)
+
+        # Update the syslog facility from the config file
+        self.log_syslog.facility = log_facility
+
+    def handle_sighup(self, signal_number, stack_frame):
+        log.info('received SIGHUP, reloading configuration')
+
+        try:
+            self.reload_config()
+        except ConfigError, e:
+            log.error(e.args[0])
+            log.error("config file '{}' contained errors, not updated".format(
+                self.args.config_file))
+
+        if self.cfg.debug:
+            import pprint
+            pp = pprint.PrettyPrinter(indent=4)
+            pp.pprint(self.cfg._get_kwargs())
+
+    def setup(self):
         # Determine the uid and gid to change to
         try:
-            nrpe_uid = pwd.getpwnam(self.nrpe_user).pw_uid
+            nrpe_uid = pwd.getpwnam(self.cfg.nrpe_user).pw_uid
         except KeyError:
             log.error('invalid nrpe_user: {}'.format(self.nrpe_user))
             sys.exit(1)
         try:
-            nrpe_gid = grp.getgrnam(self.nrpe_group).gr_gid
+            nrpe_gid = grp.getgrnam(self.cfg.nrpe_group).gr_gid
         except KeyError:
             log.error('invalid nrpe_group: {}'.format(self.nrpe_group))
             sys.exit(1)
 
         # Prepare PID file
-        pidfile = daemon.runner.make_pidlockfile(self.pid_file, 0)
+        pidfile = daemon.runner.make_pidlockfile(self.cfg.pid_file, 0)
         if daemon.runner.is_pidfile_stale(pidfile):
-            self.pidfile.break_lock()
+            pidfile.break_lock()
 
         # Prepare Daemon Context
         dctx = daemon.DaemonContext(
             pidfile=pidfile,
-            detach_process=self.daemon,
+            detach_process=self.cfg.daemon,
             uid=nrpe_uid, gid=nrpe_gid,
         )
         dctx.signal_map.update({
-            signal.SIGHUP: self.reload_config,
+            signal.SIGHUP: self.handle_sighup,
         })
         self.daemon_context = dctx
 
         # If we are not daemonising, don't redirect stdout or stderr
-        if not self.daemon:
+        if not self.cfg.daemon:
             dctx.stdout = sys.stdout
             dctx.stderr = sys.stderr
 
     def run(self):
-        self.parse_args()
         self.setup_logging()
-        self.parse_config(self.config_file)
-        self.setup()
+        self.parse_args()
 
-        if self.debug:
+        try:
+            self.reload_config()
+            self.setup()
+        except ConfigError, e:
+            log.error(e.args[0])
+            log.error("config file '{}' contained errors, aborting".format(
+                self.args.config_file))
+            sys.exit(1)
+
+        if self.cfg.debug:
             import pprint
             pp = pprint.PrettyPrinter(indent=4)
-            pp.pprint(self.__dict__)
+            pp.pprint(self.cfg._get_kwargs())
 
-        httpd = NrpeHTTPServer(self)
+        httpd = NrpeHTTPServer(self.cfg)
 
         if not self.daemon_context.files_preserve:
             self.daemon_context.files_preserve = []

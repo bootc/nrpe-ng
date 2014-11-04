@@ -18,6 +18,7 @@
 import nrpe_ng
 import os
 
+from argparse import Namespace
 from ConfigParser import RawConfigParser, NoOptionError, ParsingError, \
     _default_dict
 
@@ -129,3 +130,98 @@ class NrpeConfigParser(RawConfigParser):
             for file in files:
                 if file.endswith('.cfg'):
                     self.read(os.path.join(subdir, file))
+
+
+class ConfigError(Exception):
+    def __init__(self, message, exception):
+        super(ConfigError, self).__init__(message)
+        self.exception = exception
+
+
+class NrpeConfig(Namespace):
+    def __init__(self, defaults={}, args=Namespace(), config_file=None):
+        self.__defaults = defaults
+        self.__args = args
+        self.__config_file = config_file
+
+        self.reload()
+
+    def _get_kwargs(self):
+        return sorted((k, v) for k, v in self.__dict__.iteritems()
+                      if not k.startswith('_'))
+
+    def merge_into(self, ns):
+        for key, value in vars(ns).iteritems():
+            setattr(self, key, value)
+
+    def get_defaults(self):
+        defaults = Namespace()
+
+        for key, value in self.__defaults.iteritems():
+            setattr(defaults, key, value)
+
+        return defaults
+
+    def get_args(self):
+        return self.__args
+
+    def read_config_file(self):
+        f = self.__config_file
+        config = NrpeConfigParser()
+        parsed = Namespace()
+        secname = config.main_section  # default ini "section" for all config
+
+        # If there isn't a config file to read, stop now
+        if not f:
+            return parsed
+
+        # Attempt to read the config file
+        try:
+            with open(f) as fp:
+                config.readfp(fp, f)
+        except IOError, e:
+            raise ConfigError(
+                "{f}: failed to read file: {err}".format(
+                    f=f, err=e.strerror), e)
+
+        # Look for each key in __defaults, and transfer it to 'parsed'
+        for key in self.__defaults:
+            # Skip keys that aren't defined in the config file
+            if not config.has_option(secname, key):
+                continue
+
+            dt = type(self.__defaults[key])
+            value = config.get(secname, key)
+
+            if dt is bool:  # is it a bool?
+                try:
+                    value = config.getboolean(secname, key)
+                except ValueError, e:
+                    raise ConfigError(
+                        "{f}: {key}: expected a boolean but got '{value}'"
+                        .format(f=f, key=key, value=value), e)
+            elif dt is int:  # is int an integer?
+                try:
+                    value = config.getint(secname, key)
+                except ValueError, e:
+                    raise ConfigError(
+                        "{f}: {key}: expected an integer but got '{value}'"
+                        .format(f=f, key=key, value=value), e)
+            elif dt is list:
+                # Split into words separated by ','
+                value = [x.strip() for x in value.split(',')]
+
+            setattr(parsed, key, value)
+
+        # To allow a sub-class to parse extra things
+        self.read_extra_config(config, parsed)
+
+        return parsed
+
+    def read_extra_config(self, config, parsed):
+        pass
+
+    def reload(self):
+        self.merge_into(self.get_defaults())
+        self.merge_into(self.read_config_file())
+        self.merge_into(self.get_args())
