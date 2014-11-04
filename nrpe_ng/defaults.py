@@ -29,7 +29,7 @@ CLIENT_CONFIG = {
 
 SERVER_CONFIG = {
     'allow_bash_command_substitution': False,
-    'allowed_hosts': '',
+    'allowed_hosts': [],
     'command_prefix': '',
     'command_timeout': 60,
     'connection_timeout': 300,
