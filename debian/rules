@@ -9,6 +9,12 @@ export PYBUILD_NAME=nrpe-ng
 
 override_dh_install:
 	dh_install
+	mkdir -p $(PKG_DIR)/etc/nagios-plugins/config
+	mkdir -p $(PKG_DIR)/usr/lib/nagios/plugins
 	mkdir -p $(PKG_DIR)/usr/sbin
+	cp $(CURDIR)/config/nagios_check_nrpe_ng.cfg \
+		$(PKG_DIR)/etc/nagios-plugins/config/check_nrpe_ng.cfg
+	mv $(PKG_DIR)/usr/bin/check_nrpe_ng $(PKG_DIR)/usr/lib/nagios/plugins/
 	mv $(PKG_DIR)/usr/bin/nrpe-ng $(PKG_DIR)/usr/sbin/
+	rmdir $(PKG_DIR)/usr/bin/
 

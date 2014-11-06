@@ -1,3 +1,2 @@
 config/check_nrpe_ng.cfg	etc/nagios/
-config/nagios_check_nrpe_ng.cfg	etc/nagios-plugins/config/
 config/nrpe-ng.cfg		etc/nagios/

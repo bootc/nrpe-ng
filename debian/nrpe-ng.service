@@ -7,5 +7,5 @@ PIDFile=/run/nagios/nrpe-ng.pid
 ExecStart=/usr/sbin/nrpe-ng --config /etc/nagios/nrpe-ng.cfg --daemon
 
 [Install]
-Alias=nrpe-ng.service
+Alias=python-nrpe-ng.service
 WantedBy=multi-user.target
