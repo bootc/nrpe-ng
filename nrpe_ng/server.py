@@ -157,11 +157,12 @@ class Server:
         self.log_syslog.facility = log_facility
 
     def handle_sighup(self, signal_number, stack_frame):
-        log.info('received SIGHUP, reloading configuration')
+        log.info('received SIGHUP, reloading configuration...')
 
         try:
             self.reload_config()
             self.httpd.update_config(self.cfg)
+            log.info('configuration updated')
         except ConfigError, e:
             log.error(e.args[0])
             log.error("config file '{}' contained errors, not updated".format(
