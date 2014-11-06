@@ -173,6 +173,10 @@ class Server:
             pp = pprint.PrettyPrinter(indent=4)
             pp.pprint(self.cfg._get_kwargs())
 
+    def handle_sigterm(self, signal_number, stack_frame):
+        log.info('received SIGTERM, shutting down...')
+        sys.exit(0)
+
     def setup(self):
         # Determine the uid and gid to change to
         try:
@@ -199,6 +203,7 @@ class Server:
         )
         dctx.signal_map.update({
             signal.SIGHUP: self.handle_sighup,
+            signal.SIGTERM: self.handle_sigterm,
         })
         self.daemon_context = dctx
 
