@@ -1,0 +1,5 @@
+
+# Remove old conf files from before the package rename
+rm_conffile /etc/init.d/python-nrpe-ng '' python-nrpe-ng
+rm_conffile /etc/nagios-plugins/config/nagios_check_nrpe_ng.cfg '' python-nrpe-ng
+
