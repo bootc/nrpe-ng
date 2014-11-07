@@ -53,7 +53,7 @@ class ServerConfig(NrpeConfig):
 
             name = mo.group('cmd')
             value = config.get(secname, key)
-            cmd = Command(value)
+            cmd = Command(self, value)
             commands[name] = cmd
 
         parsed.commands = commands

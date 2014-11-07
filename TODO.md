@@ -8,7 +8,6 @@ General things that need doing:
 
 For the server only:
 
-  * Command prefixing (`command_prefix`)
   * Command run-time timeout (`command_timeout`)
   * Networking timeout (`connection_timeout`)
 

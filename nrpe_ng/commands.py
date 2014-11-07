@@ -29,7 +29,8 @@ class Command:
     # Regular expression to match argument placeholders
     ARG_RE = re.compile(r'^\$(?P<arg>\w+)\$$')
 
-    def __init__(self, cmdstr):
+    def __init__(self, cfg, cmdstr):
+        self.cfg = cfg
         self.cmd = shlex.split(cmdstr)
 
     def execute(self, args={}):
@@ -37,7 +38,10 @@ class Command:
             'PATH': EXEC_PATH,
         }
 
-        run_args = []
+        # Initialise the arguments list with the split up command prefix
+        run_args = shlex.split(self.cfg.command_prefix)
+
+        # Add the actual command and its arguments
         for arg in self.cmd:
             mo = self.ARG_RE.match(arg)
             if not mo:
