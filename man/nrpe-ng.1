@@ -1,0 +1,60 @@
+.\"                                      Hey, EMACS: -*- nroff -*-
+.\" (C) Copyright 2014  Chris Boot <debian@bootc.net>
+.\"
+.\" First parameter, NAME, should be all caps
+.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
+.\" other parameters are allowed: see man(7), man(1)
+.TH NRPE-NG 1 "2014-11-07" "nrpe-ng"
+.\" Please adjust this date whenever revising the manpage.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+nrpe-ng \- the next generation Nagios Remote Plugin Executor
+.SH SYNOPSIS
+.B nrpe-ng
+\fB\-c\fR \fICONFIG_FILE\fR
+.RI [ options ]
+.SH DESCRIPTION
+\fBnrpe-ng\fR is a rewrite of NRPE, the Nagios Remote Plugin Executor. It is a
+combination of a daemon, \fBnrpe-ng\fR, and a client program,
+\fBcheck_nrpe_ng\fR, which work in concert to run Nagios check scripts on
+remote hosts. This man page is for the daemon component that runs on the hosts
+on which you wish to run the check programs.
+.SH OPTIONS
+This program supports the following options:
+.TP
+.B \-h
+Show a summary of the available command-line options.
+.TP
+.B \-v
+Display the program's version number and exit.
+.TP
+.B \-\-debug
+Enable debugging mode, which produces much more verbose logging but prevents
+the program from logging to syslog.
+.TP
+\fB\-\-c\fR \fICONFIG_FILE\fR, \fB\-\-config\fR \fICONFIG_FILE\fR
+Specify the configuraiton file to use when running the daemon. This option is
+required.
+.TP
+\fB\-d\fR, \fB\-\-daemon\fR
+Fork the program and continue running in the background as a daemon. This mode
+is the default, so neither of these options need to be given to gain this
+behaviour.
+.TP
+.B \-f
+Do \fBnot\fR fork into the background and remain in the foreground. This option
+is the opposite of \fB\-d\fR or \fB\-\-daemon\fR, and may be useful for
+debugging.
+.SH SEE ALSO
+.BR nrpe-ng.cfg (5),
+https://github.com/bootc/nrpe-ng
