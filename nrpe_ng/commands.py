@@ -19,6 +19,7 @@ import nrpe_ng
 import re
 import shlex
 import subprocess
+import threading
 
 from nrpe_ng.defaults import EXEC_PATH
 
@@ -53,12 +54,35 @@ class Command:
 
         log.debug('Executing: {}'.format(subprocess.list2cmdline(run_args)))
 
-        proc = subprocess.Popen(
-            run_args, stdout=subprocess.PIPE, close_fds=True, env=env)
+        ipc = {}
 
-        stdout, stderr = proc.communicate()
+        def runit():
+            proc = subprocess.Popen(
+                run_args, stdout=subprocess.PIPE, close_fds=True, env=env)
+            ipc['proc'] = proc
 
-        return (proc.returncode, stdout, stderr)
+            stdout, stderr = proc.communicate()
+            ipc.update({
+                'exit': proc.returncode,
+                'stdout': stdout,
+                'stderr': stderr,
+            })
+
+        thread = threading.Thread(target=runit)
+        thread.start()
+
+        thread.join(self.cfg.command_timeout)
+        if thread.is_alive():
+            ipc['proc'].terminate()
+            thread.join(self.cfg.command_timeout)
+            if thread.is_alive():
+                ipc['proc'].kill()
+                thread.join()
+
+        if ipc['exit'] < 0 and not ipc['stdout']:
+            ipc['stdout'] = "Terminated by signal {}\n".format(-ipc['exit'])
+
+        return (ipc['exit'], ipc['stdout'], ipc['stderr'])
 
     def __repr__(self):
         return "{klass}('{command}')".format(

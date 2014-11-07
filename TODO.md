@@ -8,7 +8,6 @@ General things that need doing:
 
 For the server only:
 
-  * Command run-time timeout (`command_timeout`)
   * Networking timeout (`connection_timeout`)
 
 For the client only:
