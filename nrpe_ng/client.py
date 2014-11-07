@@ -157,7 +157,8 @@ class Client:
         try:
             conn.request(**req)
         except socket.gaierror, e:
-            log.error('{host}: {err}'.format(host=self.host, err=e.args[1]))
+            log.error('{host}: {err}'.format(
+                host=self.cfg.host, err=e.args[1]))
             sys.exit(NAGIOS_UNKNOWN)
 
         response = conn.getresponse()
