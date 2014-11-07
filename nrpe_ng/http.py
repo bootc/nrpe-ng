@@ -32,9 +32,32 @@ log = nrpe_ng.log
 
 class NrpeHandler(BaseHTTPRequestHandler):
     def setup(self):
-        self.allow_args = self.server.cfg.dont_blame_nrpe
-        self.commands = self.server.cfg.commands
+        for cfg in ['allowed_hosts', 'commands', 'dont_blame_nrpe']:
+            setattr(self, cfg, getattr(self.server.cfg, cfg))
         BaseHTTPRequestHandler.setup(self)
+
+    # Regular expression for dealing with IPv4-mapped IPv6
+    IPV4_MAPPED_IPV6_RE = re.compile(r'^::ffff:(?P<ipv4>\d+\.\d+\.\d+\.\d+)$')
+
+    def parse_request(self):
+        result = BaseHTTPRequestHandler.parse_request(self)
+        if not result:
+            return False
+
+        if self.allowed_hosts:
+            host = self.client_address[0]
+
+            # Handle IPv4-mapped IPv6 as IPv4
+            mo = self.IPV4_MAPPED_IPV6_RE.match(host)
+            if mo:
+                host = mo.group('ipv4')
+
+            # Check whether the host is listed in allowed_hosts
+            if host not in self.allowed_hosts:
+                self.send_error(401, "Not in allowed_hosts: {}".format(host))
+                return False
+
+        return True
 
     # Regular expression for extracting the command to run
     CMD_URI_RE = re.compile(r'^/v1/check/(?P<cmd>[^/]+)$')
@@ -92,7 +115,7 @@ class NrpeHandler(BaseHTTPRequestHandler):
         content_len = int(self.headers.getheader('content-length', 0))
         post_body = self.rfile.read(content_len)
 
-        if not self.allow_args:
+        if not self.dont_blame_nrpe:
             self.send_error(401, nrpe_ng.PROG +
                             ': command arguments are disabled')
             log.warning('rejecting request: command arguments disabled')

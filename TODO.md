@@ -8,7 +8,6 @@ General things that need doing:
 
 For the server only:
 
-  * Address-bases ACLs (`allowed_hosts`)
   * Command prefixing (`command_prefix`)
   * Command run-time timeout (`command_timeout`)
   * Networking timeout (`connection_timeout`)
