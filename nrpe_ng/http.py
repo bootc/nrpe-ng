@@ -32,8 +32,7 @@ log = nrpe_ng.log
 
 class NrpeHandler(BaseHTTPRequestHandler):
     def setup(self):
-        for cfg in ['allowed_hosts', 'commands', 'dont_blame_nrpe']:
-            setattr(self, cfg, getattr(self.server.cfg, cfg))
+        self.cfg = self.server.cfg
         BaseHTTPRequestHandler.setup(self)
 
     # Regular expression for dealing with IPv4-mapped IPv6
@@ -44,7 +43,7 @@ class NrpeHandler(BaseHTTPRequestHandler):
         if not result:
             return False
 
-        if self.allowed_hosts:
+        if self.cfg.allowed_hosts:
             host = self.client_address[0]
 
             # Handle IPv4-mapped IPv6 as IPv4
@@ -53,7 +52,7 @@ class NrpeHandler(BaseHTTPRequestHandler):
                 host = mo.group('ipv4')
 
             # Check whether the host is listed in allowed_hosts
-            if host not in self.allowed_hosts:
+            if host not in self.cfg.allowed_hosts:
                 self.send_error(401, "Not in allowed_hosts: {}".format(host))
                 return False
 
@@ -68,7 +67,7 @@ class NrpeHandler(BaseHTTPRequestHandler):
         mo = self.CMD_URI_RE.match(self.path)
         if mo:
             cmd = mo.group('cmd')
-            command = self.commands.get(cmd)
+            command = self.cfg.commands.get(cmd)
             if command:
                 return command
 
@@ -115,7 +114,7 @@ class NrpeHandler(BaseHTTPRequestHandler):
         content_len = int(self.headers.getheader('content-length', 0))
         post_body = self.rfile.read(content_len)
 
-        if not self.dont_blame_nrpe:
+        if not self.cfg.dont_blame_nrpe:
             self.send_error(401, nrpe_ng.PROG +
                             ': command arguments are disabled')
             log.warning('rejecting request: command arguments disabled')
