@@ -228,6 +228,9 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
     def update_config(self, cfg):
         self.cfg = cfg
 
+        # Update the timeout on the socket
+        self.socket.settimeout(cfg.connection_timeout)
+
         # TODO: Can we update any of the SSL options?
 
 

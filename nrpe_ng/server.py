@@ -25,6 +25,7 @@ import nrpe_ng
 import pwd
 import re
 import signal
+import socket
 import sys
 
 from nrpe_ng.commands import Command
@@ -155,6 +156,9 @@ class Server:
 
         # Update the syslog facility from the config file
         self.log_syslog.facility = log_facility
+
+        # Set the default timeout on sockets
+        socket.setdefaulttimeout(cfg.connection_timeout)
 
     def handle_sighup(self, signal_number, stack_frame):
         log.info('received SIGHUP, reloading configuration...')
