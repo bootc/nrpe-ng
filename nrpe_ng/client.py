@@ -20,7 +20,7 @@ import logging
 import nrpe_ng
 import socket
 import sys
-import urllib
+import urllib.parse
 
 from nrpe_ng.config import NrpeConfig, ConfigError
 from nrpe_ng.defaults import CLIENT_CONFIG
@@ -121,7 +121,7 @@ class Client:
                     args[key] = kv[1]
 
             req['method'] = 'POST'
-            req['body'] = urllib.urlencode(args)
+            req['body'] = urllib.parse.urlencode(args)
             req['headers']['Content-Length'] = len(req['body'])
             req['headers']['Content-Type'] = \
                 'application/x-www-form-urlencoded'
@@ -136,7 +136,7 @@ class Client:
 
         try:
             self.reload_config()
-        except ConfigError, e:
+        except ConfigError as e:
             log.error(e.args[0])
             log.error("config file '{}' contained errors, aborting".format(
                 self.args.config_file))
@@ -156,7 +156,7 @@ class Client:
 
         try:
             conn.request(**req)
-        except socket.gaierror, e:
+        except socket.gaierror as e:
             log.error('{host}: {err}'.format(
                 host=self.cfg.host, err=e.args[1]))
             sys.exit(NAGIOS_UNKNOWN)
@@ -166,7 +166,7 @@ class Client:
         conn.close()
 
         if response.status != 200:
-            print response.reason
+            print(response.reason)
             sys.exit(NAGIOS_UNKNOWN)
 
         result = int(response.getheader('X-NRPE-Result', NAGIOS_UNKNOWN))

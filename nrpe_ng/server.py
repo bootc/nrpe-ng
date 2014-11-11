@@ -167,7 +167,7 @@ class Server:
             self.reload_config()
             self.httpd.update_config(self.cfg)
             log.info('configuration updated')
-        except ConfigError, e:
+        except ConfigError as e:
             log.error(e.args[0])
             log.error("config file '{}' contained errors, not updated".format(
                 self.args.config_file))
@@ -223,7 +223,7 @@ class Server:
         try:
             self.reload_config()
             self.setup()
-        except ConfigError, e:
+        except ConfigError as e:
             log.error(e.args[0])
             log.error("config file '{}' contained errors, aborting".format(
                 self.args.config_file))

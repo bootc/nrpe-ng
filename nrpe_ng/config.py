@@ -19,7 +19,7 @@ import nrpe_ng
 import os
 
 from argparse import Namespace
-from ConfigParser import RawConfigParser, NoOptionError, ParsingError, \
+from configparser import RawConfigParser, NoOptionError, ParsingError, \
     _default_dict
 
 
@@ -32,7 +32,7 @@ class NrpeConfigParser(RawConfigParser):
     def __getattr__(self, name):
         try:
             return self.get(self.main_section, self.main_section, name)
-        except NoOptionError, e:
+        except NoOptionError as e:
             raise AttributeError
 
     def _read(self, fp, fpname):
@@ -108,9 +108,9 @@ class NrpeConfigParser(RawConfigParser):
 
         # join the multi-line values collected while reading
         all_sections = [self._defaults]
-        all_sections.extend(self._sections.values())
+        all_sections.extend(list(self._sections.values()))
         for options in all_sections:
-            for name, val in options.items():
+            for name, val in list(options.items()):
                 if isinstance(val, list):
                     options[name] = '\n'.join(val)
 
@@ -147,17 +147,17 @@ class NrpeConfig(Namespace):
         self.reload()
 
     def _get_kwargs(self):
-        return sorted((k, v) for k, v in self.__dict__.iteritems()
+        return sorted((k, v) for k, v in self.__dict__.items()
                       if not k.startswith('_'))
 
     def merge_into(self, ns):
-        for key, value in vars(ns).iteritems():
+        for key, value in vars(ns).items():
             setattr(self, key, value)
 
     def get_defaults(self):
         defaults = Namespace()
 
-        for key, value in self.__defaults.iteritems():
+        for key, value in self.__defaults.items():
             setattr(defaults, key, value)
 
         return defaults
@@ -179,7 +179,7 @@ class NrpeConfig(Namespace):
         try:
             with open(f) as fp:
                 config.readfp(fp, f)
-        except IOError, e:
+        except IOError as e:
             raise ConfigError(
                 "{f}: failed to read file: {err}".format(
                     f=f, err=e.strerror), e)
@@ -196,14 +196,14 @@ class NrpeConfig(Namespace):
             if dt is bool:  # is it a bool?
                 try:
                     value = config.getboolean(secname, key)
-                except ValueError, e:
+                except ValueError as e:
                     raise ConfigError(
                         "{f}: {key}: expected a boolean but got '{value}'"
                         .format(f=f, key=key, value=value), e)
             elif dt is int:  # is int an integer?
                 try:
                     value = config.getint(secname, key)
-                except ValueError, e:
+                except ValueError as e:
                     raise ConfigError(
                         "{f}: {key}: expected an integer but got '{value}'"
                         .format(f=f, key=key, value=value), e)

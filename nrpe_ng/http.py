@@ -20,11 +20,11 @@ import re
 import socket
 import ssl
 import sys
-import urlparse
+import urllib.parse
 
-from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
-from httplib import HTTPSConnection
-from SocketServer import ThreadingMixIn
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.client import HTTPSConnection
+from socketserver import ThreadingMixIn
 
 
 log = nrpe_ng.log
@@ -127,7 +127,7 @@ class NrpeHandler(BaseHTTPRequestHandler):
         # Parse the application/x-www-form-urlencoded into a dictionary
         # we don't use parse_qs because we don't want the values ending up as
         # arrays
-        args = dict(urlparse.parse_qsl(post_body, keep_blank_values=True))
+        args = dict(urllib.parse.parse_qsl(post_body, keep_blank_values=True))
 
         try:
             (returncode, stdout, stderr) = cmd.execute(args)
@@ -189,7 +189,7 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
 
         try:
             self.server_bind()
-        except socket.error, e:
+        except socket.error as e:
             log.error('failed to bind socket: {}'.format(e.args[1]))
             sys.exit(1)
 
@@ -198,7 +198,7 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
             ssl_context = ssl.create_default_context(
                 purpose=ssl.Purpose.CLIENT_AUTH,
                 cafile=cfg.ssl_ca_file)
-        except IOError, e:
+        except IOError as e:
             log.error('cannot read ssl_ca_file: {}'.format(e.args[1]))
             sys.exit(1)
         self.ssl_context = ssl_context
@@ -212,7 +212,7 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
             ssl_context.load_cert_chain(
                 certfile=cfg.ssl_cert_file,
                 keyfile=cfg.ssl_key_file)
-        except IOError, e:
+        except IOError as e:
             log.error('cannot read ssl_cert_file or ssl_key_file: {}'
                       .format(e.args[1]))
             sys.exit(1)
