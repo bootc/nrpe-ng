@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # This file is part of nrpe-ng.
 # Copyright (C) 2014  Chris Boot <bootc@bootc.net>
@@ -17,11 +17,18 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+import sys
 from setuptools import setup
+
+# Check that we are running on Python 3.2 or higher. This is required for
+# argparse, ssl.SSLContext and probably a few other things.
+if sys.version_info < (3, 2):
+    print('This program requires Python 3.2.')
+    sys.exit(1)
 
 setup(
     name='nrpe-ng',
-    version='0.0.4-dev1',
+    version='0.1.0-dev1',
     description='Next-generation Nagios remote plugin agent',
     author='Chris Boot',
     author_email='bootc@bootc.net',
@@ -36,11 +43,6 @@ setup(
         'Topic :: System :: Systems Administration',
     ],
     packages=['nrpe_ng'],
-    install_requires=[
-        'lockfile',
-        'python-daemon',
-        'setuptools',
-    ],
     entry_points={
         'console_scripts': [
             'check_nrpe_ng = nrpe_ng.client:main',
