@@ -19,7 +19,7 @@
 
 import sys
 from distutils.util import convert_path
-from setuptools import setup
+from setuptools import setup, find_packages
 
 # Check that we are running on Python 3.2 or higher. This is required for
 # argparse, ssl.SSLContext and probably a few other things.
@@ -50,7 +50,7 @@ setup(
             '(GPLv2+)',
         'Topic :: System :: Systems Administration',
     ],
-    packages=['nrpe_ng'],
+    packages=find_packages(),
     entry_points={
         'console_scripts': [
             'check_nrpe_ng = nrpe_ng.client:main',
