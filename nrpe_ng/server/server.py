@@ -112,8 +112,6 @@ class Server:
 
         # !!! IMPORTANT: Beyond this point, no ConfigErrors should be raised
 
-        self.cfg = cfg
-
         # Is the value of 'debug' changing?
         if not self.cfg or self.cfg.debug != cfg.debug:
             # In debug mode:
@@ -127,6 +125,8 @@ class Server:
                 log.setLevel(logging.INFO)
                 if not cfg.daemon:
                     log.addHandler(syslog)
+
+        self.cfg = cfg
 
         # Update the syslog facility from the config file
         self.log_syslog.facility = log_facility
