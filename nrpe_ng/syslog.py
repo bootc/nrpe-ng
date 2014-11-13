@@ -137,8 +137,4 @@ class SyslogHandler(logging.Handler):
         # Encode the facility and priority to an integer
         prio = encodePriority(self.facility, mapPriority(record.levelno))
 
-        # Message is a string. Convert to bytes as required by RFC 5424
-        if type(msg) is str:
-            msg = msg.encode('utf-8')
-
         syslog.syslog(prio, msg)
