@@ -16,48 +16,21 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import argparse
-import daemon
-import daemon.runner
 import grp
-import lockfile
 import logging
-import nrpe_ng
 import pwd
-import re
 import signal
 import socket
 import sys
 
-from nrpe_ng.commands import Command
-from nrpe_ng.config import NrpeConfig, ConfigError
-from nrpe_ng.defaults import SERVER_CONFIG
-from nrpe_ng.http import NrpeHTTPServer
-from nrpe_ng.syslog import SyslogHandler, facility as syslog_facility
+from .config import ServerConfig
 
-
-log = nrpe_ng.log
-
-
-class ServerConfig(NrpeConfig):
-    # Regular expression for parsing command name options from the config file
-    CMD_RE = re.compile(r'^command\[(?P<cmd>[^]]+)\]$')
-
-    def read_extra_config(self, config, parsed):
-        secname = config.main_section  # default ini "section" for all config
-
-        # Parse the list of commands
-        commands = {}
-        for key in config.options(secname):
-            mo = self.CMD_RE.match(key)
-            if not mo:
-                continue
-
-            name = mo.group('cmd')
-            value = config.get(secname, key)
-            cmd = Command(self, value)
-            commands[name] = cmd
-
-        parsed.commands = commands
+from .. import log, __version__, PROG
+from ..config import ConfigError
+from ..daemon import DaemonContext, PidFile, AlreadyRunningError
+from ..defaults import SERVER_CONFIG
+from ..http import NrpeHTTPServer
+from ..syslog import SyslogHandler, facility as syslog_facility
 
 
 class Server:
@@ -68,8 +41,9 @@ class Server:
         Copyright (C) 2014  Chris Boot <bootc@bootc.net>
         """
         parser = argparse.ArgumentParser(description=self.__doc__,
-                                         epilog=epilog,
-                                         version=nrpe_ng.VERSION)
+                                         epilog=epilog)
+        parser.add_argument('--version', action='version',
+                            version=__version__)
         parser.add_argument('--debug', action='store_true',
                             help='print verbose debugging information')
         parser.add_argument('-c', '--config', dest='config_file',
@@ -88,7 +62,7 @@ class Server:
         log.setLevel(logging.INFO)
 
         # Add a syslog handler with default values
-        syslog = SyslogHandler(ident=nrpe_ng.PROG,
+        syslog = SyslogHandler(ident=PROG,
                                facility=syslog_facility('daemon'))
         log.addHandler(syslog)
         self.log_syslog = syslog
@@ -194,22 +168,28 @@ class Server:
             log.error('invalid nrpe_group: {}'.format(self.nrpe_group))
             sys.exit(1)
 
-        # Prepare PID file
-        pidfile = daemon.runner.make_pidlockfile(self.cfg.pid_file, 0)
-        if daemon.runner.is_pidfile_stale(pidfile):
-            pidfile.break_lock()
-
         # Prepare Daemon Context
-        dctx = daemon.DaemonContext(
-            pidfile=pidfile,
+        dctx = DaemonContext(
             detach_process=self.cfg.daemon,
-            uid=nrpe_uid, gid=nrpe_gid,
+            files_preserve=[],
         )
         dctx.signal_map.update({
             signal.SIGHUP: self.handle_sighup,
             signal.SIGTERM: self.handle_sigterm,
         })
         self.daemon_context = dctx
+
+        # Only change UID/GID if we're daemonising
+        if self.cfg.daemon:
+            dctx.uid = nrpe_uid
+            dctx.gid = nrpe_gid
+
+        # Prepare PID file
+        if self.cfg.daemon:
+            pidfile = PidFile(self.cfg.pid_file)
+            pidfile.create()
+            dctx.files_preserve.append(pidfile.fp)
+            dctx.pidfile = pidfile
 
         # If we are not daemonising, don't redirect stdout or stderr
         if not self.cfg.daemon:
@@ -237,11 +217,7 @@ class Server:
         httpd = NrpeHTTPServer(self.cfg)
         self.httpd = httpd
 
-        if not self.daemon_context.files_preserve:
-            self.daemon_context.files_preserve = []
-        self.daemon_context.files_preserve.extend([
-            httpd.socket,
-        ])
+        self.daemon_context.files_preserve.append(httpd.socket)
 
         log.info('server listening on {addr} port {port}'.format(
             addr=httpd.server_address[0],
@@ -253,18 +229,13 @@ class Server:
                 httpd.serve_forever()
         except KeyboardInterrupt:
             sys.exit(0)
-        except lockfile.AlreadyLocked:
+        except AlreadyRunningError:
             log.error('there is already another process running (PID {})'
                       .format(self.daemon_context.pidfile.read_pid()))
             sys.exit(1)
+        except:
+            log.exception('unhandled exception, %s', sys.exc_info())
         finally:
             log.warning('shutting down')
             httpd.server_close()
             self.daemon_context.close()
-
-
-def main():
-    return Server().run()
-
-if __name__ == "__main__":
-    main()
