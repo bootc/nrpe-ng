@@ -44,7 +44,7 @@ class Command:
 
         # Add the actual command and its arguments
         for arg in self.cmd:
-            mo = self.ARG_RE.match(arg)
+            mo = self.ARG_RE.search(arg)
             if not mo:
                 run_args.append(arg)
                 continue

@@ -47,7 +47,7 @@ class NrpeHandler(BaseHTTPRequestHandler):
             host = self.client_address[0]
 
             # Handle IPv4-mapped IPv6 as IPv4
-            mo = self.IPV4_MAPPED_IPV6_RE.match(host)
+            mo = self.IPV4_MAPPED_IPV6_RE.search(host)
             if mo:
                 host = mo.group('ipv4')
 
@@ -64,7 +64,7 @@ class NrpeHandler(BaseHTTPRequestHandler):
     def get_command(self):
         command = None
 
-        mo = self.CMD_URI_RE.match(self.path)
+        mo = self.CMD_URI_RE.search(self.path)
         if mo:
             cmd = mo.group('cmd')
             command = self.cfg.commands.get(cmd)

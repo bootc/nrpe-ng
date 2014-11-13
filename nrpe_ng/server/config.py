@@ -31,7 +31,7 @@ class ServerConfig(NrpeConfig):
         # Parse the list of commands
         commands = {}
         for key in config.options(secname):
-            mo = self.CMD_RE.match(key)
+            mo = self.CMD_RE.search(key)
             if not mo:
                 continue
 
