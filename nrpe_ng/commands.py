@@ -28,7 +28,7 @@ log = nrpe_ng.log
 
 class Command:
     # Regular expression to match argument placeholders
-    ARG_RE = re.compile(r'^\$(?P<arg>\w+)\$$')
+    ARG_RE = re.compile(r'\$(?P<arg>\w+)\$')
 
     def __init__(self, cfg, cmdstr):
         self.cfg = cfg
