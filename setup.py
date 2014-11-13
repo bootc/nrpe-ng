@@ -18,6 +18,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import sys
+from distutils.util import convert_path
 from setuptools import setup
 
 # Check that we are running on Python 3.2 or higher. This is required for
@@ -26,9 +27,16 @@ if sys.version_info < (3, 2):
     print('This program requires Python 3.2.')
     sys.exit(1)
 
+# Read the version number from nrpe_ng/version.py. This avoids needing to
+# query setuptools for the version at run-time.
+main_ns = {}
+ver_path = convert_path('nrpe_ng/version.py')
+with open(ver_path) as ver_file:
+    exec(ver_file.read(), main_ns)
+
 setup(
     name='nrpe-ng',
-    version='0.1.0-dev1',
+    version=main_ns['__version__'],
     description='Next-generation Nagios remote plugin agent',
     author='Chris Boot',
     author_email='bootc@bootc.net',
