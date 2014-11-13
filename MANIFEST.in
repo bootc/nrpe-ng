@@ -6,4 +6,5 @@ include Makefile
 include man/nrpe-ng.1
 include man/nrpe-ng.cfg.5
 include README.md
+include setup.cfg
 include TODO.md
