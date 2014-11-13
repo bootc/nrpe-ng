@@ -111,7 +111,7 @@ class NrpeHandler(BaseHTTPRequestHandler):
             log.exception('Unexpected error running {}'.format(cmd))
 
     def do_POST(self):
-        content_len = int(self.headers.getheader('content-length', 0))
+        content_len = int(self.headers.get('content-length', 0))
         post_body = self.rfile.read(content_len)
 
         if not self.cfg.dont_blame_nrpe:
@@ -219,8 +219,8 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
 
         # Wrap the socket
         self.raw_socket = self.socket
-        self.socket = ssl_context.wrap_socket(self.raw_socket,
-                                              server_side=True)
+        self.socket = ssl_context.wrap_socket(
+            self.raw_socket, server_side=True, do_handshake_on_connect=False)
 
         # Now start listening
         self.server_activate()
@@ -232,6 +232,17 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
         self.socket.settimeout(cfg.connection_timeout)
 
         # TODO: Can we update any of the SSL options?
+
+    def get_request(self):
+        sock, addr = super(NrpeHTTPServer, self).get_request()
+
+        # In Python3 for some reason the socket comes out non-blocking, which
+        # wreaks havoc with the SSL layer. Set it to blocking here and then
+        # start the handshake.
+        sock.setblocking(1)
+        sock.do_handshake()
+
+        return sock, addr
 
 
 class HTTPSClientAuthConnection(HTTPSConnection):
