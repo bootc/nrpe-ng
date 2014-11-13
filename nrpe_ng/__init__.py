@@ -19,6 +19,5 @@ import logging
 from .version import __version__
 
 PROG = 'nrpe-ng'
-VERSION = __version__
 
 log = logging.getLogger(PROG)

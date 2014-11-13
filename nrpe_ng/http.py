@@ -146,7 +146,8 @@ class NrpeHandler(BaseHTTPRequestHandler):
             log.exception('Unexpected error running {}'.format(cmd))
 
     def version_string(self):
-        return '{prog}/{ver}'.format(prog=nrpe_ng.PROG, ver=nrpe_ng.VERSION)
+        return '{prog}/{ver}'.format(
+            prog=nrpe_ng.PROG, ver=nrpe_ng.__version__)
 
 
 class NrpeHTTPServer(ThreadingMixIn, HTTPServer):

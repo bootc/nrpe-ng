@@ -45,7 +45,7 @@ class Client:
         parser = argparse.ArgumentParser(description=self.__doc__,
                                          epilog=epilog)
         parser.add_argument('--version', action='version',
-                            version=nrpe_ng.VERSION)
+                            version=nrpe_ng.__version__)
         parser.add_argument('--debug', action='store_true',
                             help='print verbose debugging information')
         parser.add_argument('-C', dest='config_file',
@@ -100,7 +100,7 @@ class Client:
             'url': '/v1/check/{}'.format(self.cfg.command),
             'headers': {
                 'User-Agent': '{prog}/{ver}'.format(
-                    prog=self.argparser.prog, ver=nrpe_ng.VERSION),
+                    prog=self.argparser.prog, ver=nrpe_ng.__version__),
             }
         }
 
