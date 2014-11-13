@@ -112,7 +112,7 @@ class NrpeHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         content_len = int(self.headers.get('content-length', 0))
-        post_body = self.rfile.read(content_len)
+        post_body = self.rfile.read(content_len).decode()
 
         if not self.cfg.dont_blame_nrpe:
             self.send_error(401, nrpe_ng.PROG +
