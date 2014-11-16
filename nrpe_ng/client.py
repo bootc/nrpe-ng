@@ -16,15 +16,16 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import argparse
+import http.client
 import logging
-import nrpe_ng
 import socket
+import ssl
 import sys
 import urllib.parse
 
-from nrpe_ng.config import NrpeConfig, ConfigError
-from nrpe_ng.defaults import CLIENT_CONFIG
-from nrpe_ng.http import HTTPSClientAuthConnection
+from .config import NrpeConfig, ConfigError
+from .defaults import CLIENT_CONFIG
+from . import log, __version__
 
 
 NAGIOS_OK = 0
@@ -32,7 +33,29 @@ NAGIOS_WARNING = 1
 NAGIOS_CRITICAL = 2
 NAGIOS_UNKNOWN = 3
 
-log = nrpe_ng.log
+
+def create_ssl_context(cafile):
+    if hasattr(ssl, 'create_default_context'):
+        return ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH,
+                                          cafile=cafile)
+
+    context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+    context.options |= ssl.OP_NO_SSLv2
+    context.options |= ssl.OP_NO_SSLv3
+
+    # OP_NO_COMPRESSION only exists in Python 3.3+
+    if hasattr(ssl, 'OP_NO_COMPRESSION'):
+        context.options |= ssl.OP_NO_COMPRESSION
+
+    context.verify_mode = ssl.CERT_REQUIRED
+    context.check_hostname = True
+
+    if cafile:
+        context.load_verify_locations(cafile=cafile)
+    else:
+        context.set_default_verify_paths()
+
+    return context
 
 
 class Client:
@@ -45,7 +68,7 @@ class Client:
         parser = argparse.ArgumentParser(description=self.__doc__,
                                          epilog=epilog)
         parser.add_argument('--version', action='version',
-                            version=nrpe_ng.__version__)
+                            version=__version__)
         parser.add_argument('--debug', action='store_true',
                             help='print verbose debugging information')
         parser.add_argument('-C', dest='config_file',
@@ -100,7 +123,7 @@ class Client:
             'url': '/v1/check/{}'.format(self.cfg.command),
             'headers': {
                 'User-Agent': '{prog}/{ver}'.format(
-                    prog=self.argparser.prog, ver=nrpe_ng.__version__),
+                    prog=self.argparser.prog, ver=__version__),
             }
         }
 
@@ -147,10 +170,26 @@ class Client:
             pp = pprint.PrettyPrinter(indent=4)
             pp.pprint(self.cfg._get_kwargs())
 
-        conn = HTTPSClientAuthConnection(
-            self.cfg.host, self.cfg.port, strict=True,
-            ca_file=self.cfg.ssl_ca_file,
-            key_file=self.cfg.ssl_key_file, cert_file=self.cfg.ssl_cert_file)
+        # Set up the SSLContext
+        try:
+            ssl_context = create_ssl_context(self.cfg.ssl_ca_file)
+        except IOError as e:
+            log.error('cannot read ssl_ca_file: {}'.format(e.args[1]))
+            sys.exit(1)
+
+        # Load our own key and certificate into the client
+        if self.cfg.ssl_key_file and self.cfg.ssl_cert_file:
+            try:
+                ssl_context.load_cert_chain(
+                    certfile=self.cfg.ssl_cert_file,
+                    keyfile=self.cfg.ssl_key_file)
+            except IOError as e:
+                log.error('cannot read ssl_cert_file or ssl_key_file: {}'
+                          .format(e.args[1]))
+                sys.exit(1)
+
+        conn = http.client.HTTPSConnection(
+            self.cfg.host, self.cfg.port, context=ssl_context)
 
         req = self.format_request()
 
@@ -170,7 +209,7 @@ class Client:
             sys.exit(NAGIOS_UNKNOWN)
 
         result = int(response.getheader('X-NRPE-Result', NAGIOS_UNKNOWN))
-        sys.stdout.write(data)
+        sys.stdout.write(data.decode("utf-8"))  # FIXME: use Content-Type?
         sys.exit(result)
 
 
