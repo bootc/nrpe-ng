@@ -26,7 +26,9 @@ import urllib.parse
 from .config import NrpeConfig, ConfigError
 from .defaults import CLIENT_CONFIG
 from .version import __version__
-from . import log
+
+log = logging.getLogger(__name__)
+rootlog = logging.getLogger()
 
 
 NAGIOS_OK = 0
@@ -74,7 +76,7 @@ class Client:
     def setup_logging(self):
         # Add a console handler
         console = logging.StreamHandler()
-        log.addHandler(console)
+        rootlog.addHandler(console)
 
     def parse_args(self):
         args = self.argparser.parse_args()
@@ -91,7 +93,7 @@ class Client:
         # In debug mode, set the log level to DEBUG
         # - don't fork by default
         if cfg.debug:
-            log.setLevel(logging.DEBUG)
+            rootlog.setLevel(logging.DEBUG)
 
         self.cfg = cfg
 

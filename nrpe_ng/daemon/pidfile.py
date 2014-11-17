@@ -16,9 +16,10 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import fcntl
+import logging
 import os
 
-from .. import log
+log = logging.getLogger(__name__)
 
 
 class AlreadyRunningError(Exception):

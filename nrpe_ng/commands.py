@@ -15,13 +15,15 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+import logging
 import re
 import shlex
 import subprocess
 import threading
 
 from .defaults import EXEC_PATH
-from . import log
+
+log = logging.getLogger(__name__)
 
 
 class Command:

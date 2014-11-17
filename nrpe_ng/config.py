@@ -21,14 +21,12 @@ from argparse import Namespace
 from configparser import RawConfigParser, NoOptionError, ParsingError, \
     _default_dict
 
-from . import PROG
-
 
 class NrpeConfigParser(RawConfigParser):
     def __init__(self, defaults=None, dict_type=_default_dict,
                  allow_no_value=False):
         RawConfigParser.__init__(self, defaults, dict_type, allow_no_value)
-        self.main_section = PROG
+        self.main_section = __name__
 
     def __getattr__(self, name):
         try:

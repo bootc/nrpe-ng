@@ -25,13 +25,15 @@ import sys
 
 from .config import ServerConfig
 
-from .. import log, PROG
 from ..config import ConfigError
 from ..daemon import DaemonContext, PidFile, AlreadyRunningError
 from ..defaults import SERVER_CONFIG
 from ..http import NrpeHTTPServer
 from ..syslog import SyslogHandler, facility as syslog_facility
 from ..version import __version__
+
+log = logging.getLogger(__name__)
+rootlog = logging.getLogger()
 
 
 class Server:
@@ -60,17 +62,17 @@ class Server:
         self.cfg = None
 
     def setup_logging(self):
-        log.setLevel(logging.INFO)
+        rootlog.setLevel(logging.INFO)
 
         # Add a syslog handler with default values
-        syslog = SyslogHandler(ident=PROG,
+        syslog = SyslogHandler(ident=self.argparser.prog,
                                facility=syslog_facility('daemon'))
-        log.addHandler(syslog)
+        rootlog.addHandler(syslog)
         self.log_syslog = syslog
 
         # Add a console handler
         console = logging.StreamHandler()
-        log.addHandler(console)
+        rootlog.addHandler(console)
 
     def parse_args(self):
         self.args = self.argparser.parse_args()
@@ -119,13 +121,13 @@ class Server:
             # - don't send output to syslog
             # - set the log level to DEBUG if we're not daemonising
             if cfg.debug:
-                log.setLevel(logging.DEBUG)
+                rootlog.setLevel(logging.DEBUG)
                 if not cfg.daemon:
-                    log.removeHandler(self.log_syslog)
+                    rootlog.removeHandler(self.log_syslog)
             else:
-                log.setLevel(logging.INFO)
+                rootlog.setLevel(logging.INFO)
                 if not cfg.daemon:
-                    log.addHandler(syslog)
+                    rootlog.addHandler(syslog)
 
         self.cfg = cfg
 
