@@ -34,30 +34,6 @@ NAGIOS_CRITICAL = 2
 NAGIOS_UNKNOWN = 3
 
 
-def create_ssl_context(cafile):
-    if hasattr(ssl, 'create_default_context'):
-        return ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH,
-                                          cafile=cafile)
-
-    context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-    context.options |= ssl.OP_NO_SSLv2
-    context.options |= ssl.OP_NO_SSLv3
-
-    # OP_NO_COMPRESSION only exists in Python 3.3+
-    if hasattr(ssl, 'OP_NO_COMPRESSION'):
-        context.options |= ssl.OP_NO_COMPRESSION
-
-    context.verify_mode = ssl.CERT_REQUIRED
-    context.check_hostname = True
-
-    if cafile:
-        context.load_verify_locations(cafile=cafile)
-    else:
-        context.set_default_verify_paths()
-
-    return context
-
-
 class Client:
     """nrpe-ng: the next generation Nagios Remote Plugin Executor"""
 
@@ -172,7 +148,8 @@ class Client:
 
         # Set up the SSLContext
         try:
-            ssl_context = create_ssl_context(self.cfg.ssl_ca_file)
+            ssl_context = ssl.create_default_context(
+                ssl.Purpose.SERVER_AUTH, cafile=self.cfg.ssl_ca_file)
         except IOError as e:
             log.error('cannot read ssl_ca_file: {}'.format(e.args[1]))
             sys.exit(1)
