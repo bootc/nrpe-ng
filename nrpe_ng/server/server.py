@@ -25,12 +25,13 @@ import sys
 
 from .config import ServerConfig
 
-from .. import log, __version__, PROG
+from .. import log, PROG
 from ..config import ConfigError
 from ..daemon import DaemonContext, PidFile, AlreadyRunningError
 from ..defaults import SERVER_CONFIG
 from ..http import NrpeHTTPServer
 from ..syslog import SyslogHandler, facility as syslog_facility
+from ..version import __version__
 
 
 class Server:

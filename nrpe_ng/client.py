@@ -25,7 +25,8 @@ import urllib.parse
 
 from .config import NrpeConfig, ConfigError
 from .defaults import CLIENT_CONFIG
-from . import log, __version__
+from .version import __version__
+from . import log
 
 
 NAGIOS_OK = 0

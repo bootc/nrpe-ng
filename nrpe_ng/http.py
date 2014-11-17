@@ -25,7 +25,8 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from http.client import HTTPSConnection
 from socketserver import ThreadingMixIn
 
-from . import log, __version__, PROG
+from .version import __version__
+from . import log, PROG
 
 
 class NrpeHandler(BaseHTTPRequestHandler):

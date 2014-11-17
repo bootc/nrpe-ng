@@ -16,7 +16,6 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import logging
-from .version import __version__
 
 PROG = 'nrpe-ng'
 
