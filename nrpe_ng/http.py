@@ -15,7 +15,6 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-import nrpe_ng
 import re
 import socket
 import ssl
@@ -26,8 +25,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from http.client import HTTPSConnection
 from socketserver import ThreadingMixIn
 
-
-log = nrpe_ng.log
+from . import log, __version__, PROG
 
 
 class NrpeHandler(BaseHTTPRequestHandler):
@@ -106,8 +104,7 @@ class NrpeHandler(BaseHTTPRequestHandler):
 
             self.wfile.write(stdout)
         except:
-            self.send_error(502, nrpe_ng.PROG +
-                            ': unexpected error executing command')
+            self.send_error(502, PROG + ': unexpected error executing command')
             log.exception('Unexpected error running {}'.format(cmd))
 
     def do_POST(self):
@@ -115,8 +112,7 @@ class NrpeHandler(BaseHTTPRequestHandler):
         post_body = self.rfile.read(content_len).decode()
 
         if not self.cfg.dont_blame_nrpe:
-            self.send_error(401, nrpe_ng.PROG +
-                            ': command arguments are disabled')
+            self.send_error(401, PROG + ': command arguments are disabled')
             log.warning('rejecting request: command arguments disabled')
             return
 
@@ -141,13 +137,12 @@ class NrpeHandler(BaseHTTPRequestHandler):
 
             self.wfile.write(stdout)
         except:
-            self.send_error(502, nrpe_ng.PROG +
-                            ': unexpected error executing command')
+            self.send_error(502, PROG + ': unexpected error executing command')
             log.exception('Unexpected error running {}'.format(cmd))
 
     def version_string(self):
         return '{prog}/{ver}'.format(
-            prog=nrpe_ng.PROG, ver=nrpe_ng.__version__)
+            prog=PROG, ver=__version__)
 
 
 class NrpeHTTPServer(ThreadingMixIn, HTTPServer):

@@ -15,19 +15,20 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-import nrpe_ng
 import os
 
 from argparse import Namespace
 from configparser import RawConfigParser, NoOptionError, ParsingError, \
     _default_dict
 
+from . import PROG
+
 
 class NrpeConfigParser(RawConfigParser):
     def __init__(self, defaults=None, dict_type=_default_dict,
                  allow_no_value=False):
         RawConfigParser.__init__(self, defaults, dict_type, allow_no_value)
-        self.main_section = nrpe_ng.PROG
+        self.main_section = PROG
 
     def __getattr__(self, name):
         try:

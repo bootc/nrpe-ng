@@ -15,15 +15,13 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-import nrpe_ng
 import re
 import shlex
 import subprocess
 import threading
 
-from nrpe_ng.defaults import EXEC_PATH
-
-log = nrpe_ng.log
+from .defaults import EXEC_PATH
+from . import log
 
 
 class Command:
