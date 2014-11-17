@@ -23,8 +23,8 @@ from setuptools import setup, find_packages
 
 # Check that we are running on Python 3.2 or higher. This is required for
 # argparse, ssl.SSLContext and probably a few other things.
-if sys.version_info < (3, 2):
-    print('This program requires Python 3.2.')
+if sys.version_info < (3, 4):
+    print('This program requires Python 3.4 or greater.')
     sys.exit(1)
 
 # Read the version number from nrpe_ng/version.py. This avoids needing to
