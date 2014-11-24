@@ -15,8 +15,6 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from __future__ import absolute_import
-
 import logging
 import syslog
 
@@ -66,7 +64,7 @@ PRIORITY_MAP = [
 
 
 def priority(priority):
-    if isinstance(priority, (int, long)):
+    if isinstance(priority, int):
         return priority
     elif str(priority) == priority:
         if priority not in PRIORITY_NAMES:
@@ -78,7 +76,7 @@ def priority(priority):
 
 
 def facility(facility):
-    if isinstance(facility, (int, long)):
+    if isinstance(facility, int):
         return facility
     elif str(facility) == facility:
         if facility not in FACILITY_NAMES:
@@ -138,9 +136,5 @@ class SyslogHandler(logging.Handler):
 
         # Encode the facility and priority to an integer
         prio = encodePriority(self.facility, mapPriority(record.levelno))
-
-        # Message is a string. Convert to bytes as required by RFC 5424
-        if type(msg) is unicode:
-            msg = msg.encode('utf-8')
 
         syslog.syslog(prio, msg)

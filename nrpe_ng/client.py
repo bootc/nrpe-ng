@@ -16,23 +16,25 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import argparse
+import http.client
 import logging
-import nrpe_ng
 import socket
+import ssl
 import sys
-import urllib
+import urllib.parse
 
-from nrpe_ng.config import NrpeConfig, ConfigError
-from nrpe_ng.defaults import CLIENT_CONFIG
-from nrpe_ng.http import HTTPSClientAuthConnection
+from .config import NrpeConfig, ConfigError
+from .defaults import CLIENT_CONFIG
+from .version import __version__
+
+log = logging.getLogger(__name__)
+rootlog = logging.getLogger()
 
 
 NAGIOS_OK = 0
 NAGIOS_WARNING = 1
 NAGIOS_CRITICAL = 2
 NAGIOS_UNKNOWN = 3
-
-log = nrpe_ng.log
 
 
 class Client:
@@ -45,7 +47,7 @@ class Client:
         parser = argparse.ArgumentParser(description=self.__doc__,
                                          epilog=epilog)
         parser.add_argument('--version', action='version',
-                            version=nrpe_ng.VERSION)
+                            version=__version__)
         parser.add_argument('--debug', action='store_true',
                             help='print verbose debugging information')
         parser.add_argument('-C', dest='config_file',
@@ -74,7 +76,7 @@ class Client:
     def setup_logging(self):
         # Add a console handler
         console = logging.StreamHandler()
-        log.addHandler(console)
+        rootlog.addHandler(console)
 
     def parse_args(self):
         args = self.argparser.parse_args()
@@ -91,7 +93,7 @@ class Client:
         # In debug mode, set the log level to DEBUG
         # - don't fork by default
         if cfg.debug:
-            log.setLevel(logging.DEBUG)
+            rootlog.setLevel(logging.DEBUG)
 
         self.cfg = cfg
 
@@ -100,7 +102,7 @@ class Client:
             'url': '/v1/check/{}'.format(self.cfg.command),
             'headers': {
                 'User-Agent': '{prog}/{ver}'.format(
-                    prog=self.argparser.prog, ver=nrpe_ng.VERSION),
+                    prog=self.argparser.prog, ver=__version__),
             }
         }
 
@@ -121,7 +123,7 @@ class Client:
                     args[key] = kv[1]
 
             req['method'] = 'POST'
-            req['body'] = urllib.urlencode(args)
+            req['body'] = urllib.parse.urlencode(args)
             req['headers']['Content-Length'] = len(req['body'])
             req['headers']['Content-Type'] = \
                 'application/x-www-form-urlencoded'
@@ -136,7 +138,7 @@ class Client:
 
         try:
             self.reload_config()
-        except ConfigError, e:
+        except ConfigError as e:
             log.error(e.args[0])
             log.error("config file '{}' contained errors, aborting".format(
                 self.args.config_file))
@@ -147,16 +149,33 @@ class Client:
             pp = pprint.PrettyPrinter(indent=4)
             pp.pprint(self.cfg._get_kwargs())
 
-        conn = HTTPSClientAuthConnection(
-            self.cfg.host, self.cfg.port, strict=True,
-            ca_file=self.cfg.ssl_ca_file,
-            key_file=self.cfg.ssl_key_file, cert_file=self.cfg.ssl_cert_file)
+        # Set up the SSLContext
+        try:
+            ssl_context = ssl.create_default_context(
+                ssl.Purpose.SERVER_AUTH, cafile=self.cfg.ssl_ca_file)
+        except IOError as e:
+            log.error('cannot read ssl_ca_file: {}'.format(e.args[1]))
+            sys.exit(1)
+
+        # Load our own key and certificate into the client
+        if self.cfg.ssl_key_file and self.cfg.ssl_cert_file:
+            try:
+                ssl_context.load_cert_chain(
+                    certfile=self.cfg.ssl_cert_file,
+                    keyfile=self.cfg.ssl_key_file)
+            except IOError as e:
+                log.error('cannot read ssl_cert_file or ssl_key_file: {}'
+                          .format(e.args[1]))
+                sys.exit(1)
+
+        conn = http.client.HTTPSConnection(
+            self.cfg.host, self.cfg.port, context=ssl_context)
 
         req = self.format_request()
 
         try:
             conn.request(**req)
-        except socket.gaierror, e:
+        except socket.gaierror as e:
             log.error('{host}: {err}'.format(
                 host=self.cfg.host, err=e.args[1]))
             sys.exit(NAGIOS_UNKNOWN)
@@ -166,11 +185,11 @@ class Client:
         conn.close()
 
         if response.status != 200:
-            print response.reason
+            print(response.reason)
             sys.exit(NAGIOS_UNKNOWN)
 
         result = int(response.getheader('X-NRPE-Result', NAGIOS_UNKNOWN))
-        sys.stdout.write(data)
+        sys.stdout.write(data.decode("utf-8"))  # FIXME: use Content-Type?
         sys.exit(result)
 
 

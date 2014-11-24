@@ -4,8 +4,10 @@ PACKAGE = $(firstword $(shell dh_listpackages))
 PKG_DIR = $(CURDIR)/debian/$(PACKAGE)
 
 export PYBUILD_NAME=nrpe-ng
+export PYBUILD_TEST_NOSE=1
+export PYBUILD_TEST_ARGS=-c $(CURDIR)/setup.cfg
 %:
-	dh $@ --with python2,systemd --buildsystem=pybuild
+	dh $@ --with python3,systemd --buildsystem=pybuild
 
 override_dh_install:
 	dh_install
@@ -17,4 +19,5 @@ override_dh_install:
 	mv $(PKG_DIR)/usr/bin/check_nrpe_ng $(PKG_DIR)/usr/lib/nagios/plugins/
 	mv $(PKG_DIR)/usr/bin/nrpe-ng $(PKG_DIR)/usr/sbin/
 	rmdir $(PKG_DIR)/usr/bin/
+	find $(PKG_DIR)/ -type f -name .coverage -delete
 

@@ -13,3 +13,6 @@
 
 # Debian pybuild temporary directory
 /.pybuild/
+
+# Python code coverage metadata
+/.coverage

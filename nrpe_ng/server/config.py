@@ -15,4 +15,29 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-# This page is intentionally left blank.
+import re
+
+from ..config import NrpeConfig
+from ..commands import Command
+
+
+class ServerConfig(NrpeConfig):
+    # Regular expression for parsing command name options from the config file
+    CMD_RE = re.compile(r'^command\[(?P<cmd>[^]]+)\]$')
+
+    def read_extra_config(self, config, parsed):
+        secname = config.main_section  # default ini "section" for all config
+
+        # Parse the list of commands
+        commands = {}
+        for key in config.options(secname):
+            mo = self.CMD_RE.search(key)
+            if not mo:
+                continue
+
+            name = mo.group('cmd')
+            value = config.get(secname, key)
+            cmd = Command(self, value)
+            commands[name] = cmd
+
+        parsed.commands = commands

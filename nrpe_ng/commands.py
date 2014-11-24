@@ -15,20 +15,20 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-import nrpe_ng
+import logging
 import re
 import shlex
 import subprocess
 import threading
 
-from nrpe_ng.defaults import EXEC_PATH
+from .defaults import EXEC_PATH
 
-log = nrpe_ng.log
+log = logging.getLogger(__name__)
 
 
 class Command:
     # Regular expression to match argument placeholders
-    ARG_RE = re.compile(r'^\$(?P<arg>\w+)\$$')
+    ARG_RE = re.compile(r'\$(?P<arg>\w+)\$')
 
     def __init__(self, cfg, cmdstr):
         self.cfg = cfg
@@ -44,7 +44,7 @@ class Command:
 
         # Add the actual command and its arguments
         for arg in self.cmd:
-            mo = self.ARG_RE.match(arg)
+            mo = self.ARG_RE.search(arg)
             if not mo:
                 run_args.append(arg)
                 continue

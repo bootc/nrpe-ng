@@ -2,17 +2,17 @@ Source: nrpe-ng
 Maintainer: Chris Boot <debian@bootc.net>
 Section: python
 Priority: optional
-Build-Depends: python-all (>= 2.6.6-3), debhelper (>= 9), dh-python,
- python-setuptools, dh-systemd (>= 1.5)
+Build-Depends: python3-all (>= 3.4~), debhelper (>= 9), dh-python,
+ python3-setuptools, dh-systemd (>= 1.5), python3-nose, python3-coverage
 Standards-Version: 3.9.6
 Homepage: https://github.com/bootc/nrpe-ng
 Vcs-Browser: https://github.com/bootc/nrpe-ng
 Vcs-Git: git://github.com/bootc/nrpe-ng.git
+X-Python3-Version: >= 3.4
 
 Package: nrpe-ng
 Architecture: all
-Depends: ${misc:Depends}, ${python:Depends}, adduser, python-setuptools,
- ssl-cert
+Depends: ${misc:Depends}, ${python3:Depends}, adduser, ssl-cert
 Description: Next-generation Nagios remote plugin agent
  Nagios is a host/service/network monitoring and management system.
  .
