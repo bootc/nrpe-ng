@@ -16,5 +16,6 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 from .server import Server
+from .__main__ import main  # for the setuptools entry point
 
 __all__ = locals()
