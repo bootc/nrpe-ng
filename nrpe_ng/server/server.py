@@ -127,7 +127,7 @@ class Server:
             else:
                 rootlog.setLevel(logging.INFO)
                 if not cfg.daemon:
-                    rootlog.addHandler(syslog)
+                    rootlog.addHandler(self.log_syslog)
 
         self.cfg = cfg
 
@@ -236,6 +236,8 @@ class Server:
             log.error('there is already another process running (PID {})'
                       .format(self.daemon_context.pidfile.read_pid()))
             sys.exit(1)
+        except SystemExit:
+            raise
         except:
             log.exception('unhandled exception, %s', sys.exc_info())
         finally:
