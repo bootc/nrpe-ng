@@ -6,6 +6,7 @@
 # The following changes were made:
 # - Remove Python 2.x compatibility wrappers
 # - PEP-8 compliance
+# - flake8 fixes
 #
 # This file is included in the package to avoid unnecessary dependencies on
 # lockfile, and this updated daemon library is not yet packaged for Debian.
@@ -400,7 +401,6 @@ class DaemonContext(object):
 
         if self.pidfile is not None:
             # Follow the interface for telling a context manager to exit,
-            # <URL:http://docs.python.org/library/stdtypes.html#typecontextmanager>.
             self.pidfile.__exit__(None, None, None)
 
         self._is_open = False
@@ -497,7 +497,7 @@ def change_working_directory(directory):
     except Exception as exc:
         error = DaemonOSEnvironmentError(
             "Unable to change working directory (%(exc)s)"
-            % vars())
+            % {'exc': exc})
         raise error
 
 
@@ -515,7 +515,7 @@ def change_root_directory(directory):
     except Exception as exc:
         error = DaemonOSEnvironmentError(
             "Unable to change root directory (%(exc)s)"
-            % vars())
+            % {'exc': exc})
         raise error
 
 
@@ -527,7 +527,7 @@ def change_file_creation_mask(mask):
     except Exception as exc:
         error = DaemonOSEnvironmentError(
             "Unable to change file creation mask (%(exc)s)"
-            % vars())
+            % {'exc': exc})
         raise error
 
 
@@ -545,7 +545,7 @@ def change_process_owner(uid, gid):
     except Exception as exc:
         error = DaemonOSEnvironmentError(
             "Unable to change file creation mask (%(exc)s)"
-            % vars())
+            % {'exc': exc})
         raise error
 
 
@@ -562,11 +562,11 @@ def prevent_core_dump():
     try:
         # Ensure the resource limit exists on this platform, by requesting
         # its current value
-        core_limit_prev = resource.getrlimit(core_resource)
+        resource.getrlimit(core_resource)
     except ValueError as exc:
         error = DaemonOSEnvironmentError(
             "System does not support RLIMIT_CORE resource limit (%(exc)s)"
-            % vars())
+            % {'exc': exc})
         raise error
 
     # Set hard and soft limits to zero, i.e. no core dump at all
@@ -601,7 +601,10 @@ def detach_process_context():
             exc_errno = exc.errno
             exc_strerror = exc.strerror
             error = DaemonProcessDetachError(
-                "%(error_message)s: [%(exc_errno)d] %(exc_strerror)s" % vars())
+                "%(error_message)s: [%(exc_errno)d] %(exc_strerror)s" % {
+                    'error_message': error_message,
+                    'exc_errno': exc_errno,
+                    'exc_strerror': exc_strerror})
             raise error
 
     fork_then_exit_parent(error_message="Failed first fork")
@@ -637,7 +640,7 @@ def is_socket(fd):
     file_socket = socket.fromfd(fd, socket.AF_INET, socket.SOCK_RAW)
 
     try:
-        socket_type = file_socket.getsockopt(
+        file_socket.getsockopt(
             socket.SOL_SOCKET, socket.SO_TYPE)
     except socket.error as exc:
         exc_errno = exc.args[0]

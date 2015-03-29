@@ -31,7 +31,7 @@ class NrpeConfigParser(RawConfigParser):
     def __getattr__(self, name):
         try:
             return self.get(self.main_section, self.main_section, name)
-        except NoOptionError as e:
+        except NoOptionError:
             raise AttributeError
 
     def _read(self, fp, fpname):

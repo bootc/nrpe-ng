@@ -21,7 +21,7 @@ import sys
 import tempfile
 import unittest
 
-from ..pidfile import *
+from ..pidfile import PidFile, AlreadyRunningError
 
 
 class PidFileTests(unittest.TestCase):

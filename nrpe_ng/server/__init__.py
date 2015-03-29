@@ -15,7 +15,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from .server import Server
-from .__main__ import main  # for the setuptools entry point
+from .server import Server  # NoQA
+from .__main__ import main  # NoQA, for the setuptools entry point
 
 __all__ = locals()
