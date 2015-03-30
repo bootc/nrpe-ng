@@ -16,7 +16,6 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 PYTHON3 := $(shell which python3)
-FLAKE8 := $(shell which flake8)
 
 all: flake8
 
@@ -25,5 +24,5 @@ clean:
 		xargs -0 rm
 
 flake8:
-	$(PYTHON3) $(FLAKE8) $(CURDIR)
+	$(PYTHON3) -m flake8 $(CURDIR)
 
