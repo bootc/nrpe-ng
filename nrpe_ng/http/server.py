@@ -119,6 +119,11 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
         # wreaks havoc with the SSL layer. Set it to blocking here and then
         # start the handshake.
         sock.setblocking(1)
+
+        # Make sure there is a timeout on the socket so it doesn't block
+        # forever.
+        sock.settimeout(self.cfg.connection_timeout)
+
         sock.do_handshake()
 
         return sock, addr
