@@ -63,8 +63,8 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
             sys.exit(1)
 
         # Set up the HTTPServer instance, creating a a listening socket
-        HTTPServer.__init__(self, address, RequestHandlerClass,
-                            bind_and_activate=False)
+        super(NrpeHTTPServer, self).__init__(
+            address, RequestHandlerClass, bind_and_activate=False)
 
         try:
             self.server_bind()
