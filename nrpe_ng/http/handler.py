@@ -18,6 +18,7 @@
 import logging
 import re
 import urllib.parse
+import sys
 
 from http.server import BaseHTTPRequestHandler
 
@@ -92,7 +93,11 @@ class NrpeHandler(BaseHTTPRequestHandler):
 
         try:
             (returncode, stdout, stderr) = cmd.execute()
-
+        except:
+            self.send_error(502, 'Unexpected error executing command')
+            log.exception('Unexpected error {e} running {c}'.format(
+                e=sys.exc_info()[0], c=cmd))
+        else:
             self.send_response(200)
             self.send_header('Connection', 'close')
             self.send_header('Content-Length', len(stdout))
@@ -101,9 +106,6 @@ class NrpeHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
             self.wfile.write(stdout)
-        except:
-            self.send_error(502, 'Unexpected error executing command')
-            log.exception('Unexpected error running {}'.format(cmd))
 
     def do_POST(self):
         content_len = int(self.headers.get('content-length', 0))
