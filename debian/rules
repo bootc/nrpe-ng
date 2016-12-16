@@ -21,3 +21,6 @@ override_dh_install:
 	rmdir $(PKG_DIR)/usr/bin/
 	find $(PKG_DIR)/ -type f -name .coverage -delete
 
+override_dh_auto_clean:
+	dh_auto_clean
+	rm -rf nrpe_ng.egg-info/

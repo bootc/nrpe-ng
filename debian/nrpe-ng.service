@@ -1,5 +1,6 @@
 [Unit]
 Description=The next generation Nagios Remote Plugin Executor
+Documentation=man:nrpe-ng(1)
 
 [Service]
 Type=forking
