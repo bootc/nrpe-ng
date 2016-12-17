@@ -3,7 +3,7 @@ Maintainer: Debian Nagios Maintainer Group <pkg-nagios-devel@lists.alioth.debian
 Uploaders:
  Chris Boot <crb@tiger-computing.co.uk>,
  Jonathan Wiltshire <jmw@tiger-computing.co.uk>,
-Section: python
+Section: net
 Priority: optional
 Build-Depends:
  debhelper (>= 10),
