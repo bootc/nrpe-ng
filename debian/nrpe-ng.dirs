@@ -1,0 +1,3 @@
+etc/nagios-plugins/config
+usr/lib/nagios/plugins
+usr/sbin
