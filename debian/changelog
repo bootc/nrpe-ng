@@ -1,5 +1,5 @@
-nrpe-ng (0.1.2-1) UNRELEASED; urgency=medium
+nrpe-ng (0.1.2-1) unstable; urgency=medium
 
   * Initial release. (Closes: #848343)
 
- -- Chris Boot <crb@tiger-computing.co.uk>  Fri, 16 Dec 2016 15:31:24 +0000
+ -- Chris Boot <crb@tiger-computing.co.uk>  Mon, 19 Dec 2016 12:17:31 +0000
