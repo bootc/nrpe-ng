@@ -1,8 +1,6 @@
 Source: nrpe-ng
-Maintainer: Debian Nagios Maintainer Group <pkg-nagios-devel@lists.alioth.debian.org>
-Uploaders:
- Chris Boot <crb@tiger-computing.co.uk>,
- Jonathan Wiltshire <jmw@tiger-computing.co.uk>,
+Maintainer: Chris Boot <crb@tiger-computing.co.uk>
+Uploaders: Jonathan Wiltshire <jmw@tiger-computing.co.uk>
 Section: net
 Priority: optional
 Build-Depends:
