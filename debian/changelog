@@ -1,6 +1,7 @@
 nrpe-ng (0.1.2-1~bpo8+1) UNRELEASED; urgency=medium
 
   * Rebuild for jessie-backports.
+  * Update gbp.conf to track the new jessie-backports branch.
 
  -- Chris Boot <crb@tiger-computing.co.uk>  Sun, 01 Jan 2017 16:25:26 +0000
 
