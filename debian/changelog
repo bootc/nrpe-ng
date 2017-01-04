@@ -1,3 +1,9 @@
+nrpe-ng (0.1.2-1~bpo8+1) UNRELEASED; urgency=medium
+
+  * Rebuild for jessie-backports.
+
+ -- Chris Boot <crb@tiger-computing.co.uk>  Sun, 01 Jan 2017 16:25:26 +0000
+
 nrpe-ng (0.1.2-1) unstable; urgency=medium
 
   * Initial release. (Closes: #848343)
