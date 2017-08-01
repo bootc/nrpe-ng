@@ -18,13 +18,14 @@
 import argparse
 import http.client
 import logging
+import os.path
 import socket
 import ssl
 import sys
 import urllib.parse
 
 from .config import NrpeConfig, ConfigError
-from .defaults import CLIENT_CONFIG
+from .defaults import CLIENT_CONFIG, CLIENT_CONFIG_PATH
 from .version import __version__
 
 log = logging.getLogger(__name__)
@@ -88,10 +89,16 @@ class Client:
         self.args = args
 
     def reload_config(self):
-        cfg = NrpeConfig(CLIENT_CONFIG, self.args, self.args.config_file)
+        config_file = self.args.config_file
+
+        # If the user has not specified a configuration file, but a file exists
+        # in the standard location, use it.
+        if config_file is None and os.path.lexists(CLIENT_CONFIG_PATH):
+            config_file = CLIENT_CONFIG_PATH
+
+        cfg = NrpeConfig(CLIENT_CONFIG, self.args, config_file)
 
         # In debug mode, set the log level to DEBUG
-        # - don't fork by default
         if cfg.debug:
             rootlog.setLevel(logging.DEBUG)
 
