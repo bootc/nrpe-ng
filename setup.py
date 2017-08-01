@@ -57,4 +57,7 @@ setup(
             'nrpe-ng = nrpe_ng.server:main',
         ],
     },
+    install_requires=[
+        'requests',
+    ],
 )

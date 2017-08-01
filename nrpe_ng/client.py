@@ -16,13 +16,13 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import argparse
-import http.client
 import logging
 import os.path
-import socket
-import ssl
+import requests
 import sys
-import urllib.parse
+import warnings
+
+from requests.packages.urllib3.exceptions import SubjectAltNameWarning
 
 from .config import NrpeConfig, ConfigError
 from .defaults import CLIENT_CONFIG, CLIENT_CONFIG_PATH
@@ -104,13 +104,19 @@ class Client:
 
         self.cfg = cfg
 
-    def format_request(self):
+    def make_request(self):
         req = {
-            'url': '/v1/check/{}'.format(self.cfg.command),
+            'url': "https://{host}:{port}/v1/check/{command}".format(
+                host=self.cfg.host,
+                port=self.cfg.port,
+                command=self.cfg.command),
             'headers': {
-                'User-Agent': '{prog}/{ver}'.format(
-                    prog=self.argparser.prog, ver=__version__),
-            }
+                'User-Agent': "{prog}/{ver}".format(
+                    prog=self.argparser.prog,
+                    ver=__version__),
+            },
+            'timeout': self.cfg.timeout,
+            'allow_redirects': False,
         }
 
         if self.cfg.args:
@@ -130,14 +136,25 @@ class Client:
                     args[key] = kv[1]
 
             req['method'] = 'POST'
-            req['body'] = urllib.parse.urlencode(args)
-            req['headers']['Content-Length'] = len(req['body'])
-            req['headers']['Content-Type'] = \
-                'application/x-www-form-urlencoded'
+            req['data'] = args
         else:
             req['method'] = 'GET'
 
-        return req
+        # Configure SSL server certificate verification
+        if self.cfg.ssl_verify_server:
+            if self.cfg.ssl_ca_file:
+                req['verify'] = self.cfg.ssl_ca_file
+            else:
+                req['verify'] = True
+        else:
+            # Do not verify server certificates
+            req['verify'] = False
+
+        # Configure SSL client certificates
+        if self.cfg.ssl_key_file and self.cfg.ssl_cert_file:
+            req['cert'] = (self.cfg.ssl_cert_file, self.cfg.ssl_key_file)
+
+        return requests.request(**req)
 
     def run(self):
         self.setup_logging()
@@ -156,52 +173,47 @@ class Client:
             pp = pprint.PrettyPrinter(indent=4)
             pp.pprint(self.cfg._get_kwargs())
 
-        # Set up the SSLContext
         try:
-            ssl_context = ssl.create_default_context(
-                ssl.Purpose.SERVER_AUTH, cafile=self.cfg.ssl_ca_file)
-        except IOError as e:
-            log.error('cannot read ssl_ca_file: {}'.format(e.args[1]))
-            sys.exit(1)
+            with warnings.catch_warnings():
+                # Ignore urllib3's (embedded into requests) subjectAltName
+                # warning unconditionally. It is highly likely that the
+                # certificates used with nrpe-ng lack a subjectAltName so just
+                # allow them to keep working silently; if/when requests or
+                # urllib3 makes this fail, people will realise quickly enough.
+                warnings.simplefilter('ignore', category=SubjectAltNameWarning)
 
-        # Load our own key and certificate into the client
-        if self.cfg.ssl_key_file and self.cfg.ssl_cert_file:
-            try:
-                ssl_context.load_cert_chain(
-                    certfile=self.cfg.ssl_cert_file,
-                    keyfile=self.cfg.ssl_key_file)
-            except IOError as e:
-                log.error('cannot read ssl_cert_file or ssl_key_file: {}'
-                          .format(e.args[1]))
-                sys.exit(1)
+                r = self.make_request()
 
-        conn = http.client.HTTPSConnection(
-            self.cfg.host, self.cfg.port, context=ssl_context)
+        except requests.exceptions.Timeout:
+            log.error("{host}: Request timed out".format(
+                host=self.cfg.host))
 
-        req = self.format_request()
+            if self.cfg.timeout_unknown:
+                sys.exit(NAGIOS_UNKNOWN)
+            else:
+                sys.exit(NAGIOS_CRITICAL)
 
-        try:
-            conn.request(**req)
-        except socket.gaierror as e:
-            log.error('{host}: {err}'.format(
-                host=self.cfg.host, err=e.args[1]))
+        except requests.exceptions.RequestException as e:
+            log.error("{host}: {err}".format(
+                host=self.cfg.host, err=e.args[0]))
             sys.exit(NAGIOS_UNKNOWN)
 
-        response = conn.getresponse()
-        data = response.read()
-        conn.close()
-
-        if response.status != 200:
-            print(response.reason)
+        if r.status_code != 200:
+            print(r.reason)
             sys.exit(NAGIOS_UNKNOWN)
 
-        result = int(response.getheader('X-NRPE-Result', NAGIOS_UNKNOWN))
-        sys.stdout.write(data.decode("utf-8"))  # FIXME: use Content-Type?
+        try:
+            result = int(r.headers['X-NRPE-Result'])
+        except:
+            result = NAGIOS_UNKNOWN
+
+        sys.stdout.write(r.text)
         sys.exit(result)
 
 
 def main():
     return Client().run()
+
 
 if __name__ == "__main__":
     main()
