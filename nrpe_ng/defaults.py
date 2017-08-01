@@ -17,6 +17,7 @@
 
 PORT = 59546
 EXEC_PATH = '/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin'
+CLIENT_CONFIG_PATH = '/etc/nagios/check_nrpe_ng.cfg'
 
 CLIENT_CONFIG = {
     'port': PORT,
