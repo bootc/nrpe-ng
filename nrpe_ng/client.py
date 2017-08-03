@@ -22,7 +22,10 @@ import requests
 import sys
 import warnings
 
-from requests.packages.urllib3.exceptions import SubjectAltNameWarning
+try:
+    from requests.packages.urllib3.exceptions import SubjectAltNameWarning
+except ImportError:
+    SubjectAltNameWarning = None
 
 from .config import NrpeConfig, ConfigError
 from .defaults import CLIENT_CONFIG, CLIENT_CONFIG_PATH
@@ -180,7 +183,9 @@ class Client:
                 # certificates used with nrpe-ng lack a subjectAltName so just
                 # allow them to keep working silently; if/when requests or
                 # urllib3 makes this fail, people will realise quickly enough.
-                warnings.simplefilter('ignore', category=SubjectAltNameWarning)
+                if SubjectAltNameWarning:
+                    warnings.simplefilter('ignore',
+                                          category=SubjectAltNameWarning)
 
                 r = self.make_request()
 
