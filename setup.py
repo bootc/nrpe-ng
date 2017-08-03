@@ -59,5 +59,6 @@ setup(
     },
     install_requires=[
         'requests',
+        'tornado>=4.4',
     ],
 )
