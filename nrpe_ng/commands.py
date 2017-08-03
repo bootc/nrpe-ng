@@ -19,11 +19,39 @@ import logging
 import re
 import shlex
 import subprocess
-import threading
+import tornado.process
+
+from datetime import timedelta
+from tornado import gen
+from tornado.ioloop import IOLoop
 
 from .defaults import EXEC_PATH
 
 log = logging.getLogger(__name__)
+
+
+@gen.coroutine
+def terminate_hard(subproc, attempts=3, interval=1):
+    for signal in [subproc.proc.terminate, subproc.proc.kill]:
+        for _ in range(attempts):
+            try:
+                signal()
+            except ProcessLookupError:
+                pass
+
+            try:
+                yield gen.with_timeout(
+                    timedelta(seconds=interval),
+                    subproc.wait_for_exit(raise_error=False))
+            except gen.TimeoutError:
+                pass
+            else:
+                return
+
+
+class CommandTimedOutError(Exception):
+    def __init__(self):
+        super(CommandTimedOutError, self).__init__('CommandTimedOutError')
 
 
 class Command:
@@ -35,6 +63,10 @@ class Command:
         self.cmd = shlex.split(cmdstr)
 
     def execute(self, args={}):
+        return IOLoop.current().run_sync(self._execute, args)
+
+    @gen.coroutine
+    def _execute(self, args={}):
         env = {
             'PATH': EXEC_PATH,
         }
@@ -54,35 +86,27 @@ class Command:
 
         log.debug('Executing: {}'.format(subprocess.list2cmdline(run_args)))
 
-        ipc = {}
+        proc = tornado.process.Subprocess(
+            run_args,
+            stdout=tornado.process.Subprocess.STREAM,
+            close_fds=True,
+            env=env)
 
-        def runit():
-            proc = subprocess.Popen(
-                run_args, stdout=subprocess.PIPE, close_fds=True, env=env)
-            ipc['proc'] = proc
+        try:
+            exit, stdout = yield gen.with_timeout(
+                timedelta(seconds=self.cfg.command_timeout),
+                [
+                    proc.wait_for_exit(raise_error=False),
+                    proc.stdout.read_until_close(),
+                ])
+        except gen.TimeoutError:
+            IOLoop.current().add_callback(terminate_hard, proc)
+            raise CommandTimedOutError
 
-            stdout, stderr = proc.communicate()
-            ipc.update({
-                'exit': proc.returncode,
-                'stdout': stdout,
-                'stderr': stderr,
-            })
+        if exit < 0 and not stdout:
+            stdout = "Terminated by signal {}\n".format(-exit)
 
-        thread = threading.Thread(target=runit)
-        thread.start()
-
-        thread.join(self.cfg.command_timeout)
-        if thread.is_alive():
-            ipc['proc'].terminate()
-            thread.join(self.cfg.command_timeout)
-            if thread.is_alive():
-                ipc['proc'].kill()
-                thread.join()
-
-        if ipc['exit'] < 0 and not ipc['stdout']:
-            ipc['stdout'] = "Terminated by signal {}\n".format(-ipc['exit'])
-
-        return (ipc['exit'], ipc['stdout'], ipc['stderr'])
+        return (exit, stdout)
 
     def __repr__(self):
         return "{klass}('{command}')".format(

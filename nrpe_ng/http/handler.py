@@ -92,7 +92,7 @@ class NrpeHandler(BaseHTTPRequestHandler):
             return
 
         try:
-            (returncode, stdout, stderr) = cmd.execute()
+            (returncode, stdout) = cmd.execute()
         except:
             self.send_error(502, 'Unexpected error executing command')
             log.exception('Unexpected error {e} running {c}'.format(
@@ -126,7 +126,7 @@ class NrpeHandler(BaseHTTPRequestHandler):
         args = dict(urllib.parse.parse_qsl(post_body, keep_blank_values=True))
 
         try:
-            (returncode, stdout, stderr) = cmd.execute(args)
+            (returncode, stdout) = cmd.execute(args)
 
             self.send_response(200)
             self.send_header('Connection', 'close')
