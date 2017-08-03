@@ -20,56 +20,23 @@ import socket
 import ssl
 import sys
 
-from http.server import HTTPServer
-from socketserver import ThreadingMixIn
+from tornado import web
+from tornado.httpserver import HTTPServer
+from tornado.netutil import bind_sockets
 
 from .handler import NrpeHandler
 
 log = logging.getLogger(__name__)
 
 
-class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
-    def __init__(self, cfg, RequestHandlerClass=NrpeHandler):
+class NrpeHTTPServer(HTTPServer):
+    def initialize(self, cfg):
         self.cfg = cfg
 
         # Check we have a certificate and key defines
         if not cfg.ssl_cert_file or not cfg.ssl_key_file:
             log.error('a valid ssl_cert_file and ssl_key_file are required, '
                       'aborting')
-            sys.exit(1)
-
-        # Figure out the arguments we need to pass to socket.socket()
-        address = None
-        try:
-            for res in socket.getaddrinfo(
-                    cfg.server_address, cfg.server_port,
-                    socket.AF_UNSPEC, socket.SOCK_STREAM, socket.IPPROTO_TCP,
-                    socket.AI_PASSIVE):
-
-                af, socktype, proto, canonname, sa = res
-
-                if af in [socket.AF_INET, socket.AF_INET6]:
-                    self.address_family = af
-                    address = sa
-                    break
-        except socket.gaierror:
-            pass  # let the condition below take care of the error
-
-        if not address:
-            log.error('failed to find a suitable socket for host {host} '
-                      'port {port}, aborting'.format(
-                          host=cfg.server_address,
-                          port=cfg.server_port))
-            sys.exit(1)
-
-        # Set up the HTTPServer instance, creating a a listening socket
-        super(NrpeHTTPServer, self).__init__(
-            address, RequestHandlerClass, bind_and_activate=False)
-
-        try:
-            self.server_bind()
-        except socket.error as e:
-            log.error('failed to bind socket: {}'.format(e.args[1]))
             sys.exit(1)
 
         # Set up the SSL context
@@ -96,34 +63,42 @@ class NrpeHTTPServer(ThreadingMixIn, HTTPServer):
                       .format(e.args[1]))
             sys.exit(1)
 
-        # Wrap the socket
-        self.raw_socket = self.socket
-        self.socket = ssl_context.wrap_socket(
-            self.raw_socket, server_side=True, do_handshake_on_connect=False)
+        app = web.Application([
+            (r'/v1/check/(?P<cmd>[^/]+)$', NrpeHandler, {'cfg': cfg}),
+        ])
 
-        # Now start listening
-        self.server_activate()
+        # Set up the HTTPServer instance
+        super(NrpeHTTPServer, self).initialize(
+            app, no_keep_alive=True, ssl_options=ssl_context,
+            idle_connection_timeout=cfg.connection_timeout,
+            body_timeout=cfg.connection_timeout)
+
+        # Because Tornado unconditionally sets IPV6_V6ONLY on IPv6 sockets, we
+        # need a means to preserve old behaviour. This should only be an issue
+        # when listening to '::' for IPv6 any-address. Tornado will listen both
+        # the IPv4 and IPv6 any-address when the bind address is blank, so just
+        # set the address to be empty if we encounter '::'.
+        if cfg.server_address == '::':
+            cfg.server_address = ''
+
+        try:
+            self.sockets = bind_sockets(port=cfg.server_port,
+                                        address=cfg.server_address)
+        except socket.error as e:
+            log.error('failed to bind socket: {}'.format(e.args[1]))
+            sys.exit(1)
+
+        # Prevent tornado from logging HTTP requests
+        if not self.cfg.debug:
+            logging.getLogger('tornado.access').disabled = True
+
+    def start(self):
+        # We can't do the add_sockets() until after we have forked, otherwise
+        # Tornado's eventfd is closed during the fork (and there's no sane way
+        # of preserving it).
+        self.add_sockets(self.sockets)
 
     def update_config(self, cfg):
         self.cfg = cfg
 
-        # Update the timeout on the socket
-        self.socket.settimeout(cfg.connection_timeout)
-
-        # TODO: Can we update any of the SSL options?
-
-    def get_request(self):
-        sock, addr = super(NrpeHTTPServer, self).get_request()
-
-        # In Python3 for some reason the socket comes out non-blocking, which
-        # wreaks havoc with the SSL layer. Set it to blocking here and then
-        # start the handshake.
-        sock.setblocking(1)
-
-        # Make sure there is a timeout on the socket so it doesn't block
-        # forever.
-        sock.settimeout(self.cfg.connection_timeout)
-
-        sock.do_handshake()
-
-        return sock, addr
+        # TODO: What options can we update dynamically?

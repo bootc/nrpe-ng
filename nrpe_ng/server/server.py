@@ -23,6 +23,8 @@ import signal
 import socket
 import sys
 
+from tornado.ioloop import IOLoop
+
 from .config import ServerConfig
 
 from ..config import ConfigError
@@ -220,16 +222,21 @@ class Server:
         httpd = NrpeHTTPServer(self.cfg)
         self.httpd = httpd
 
-        self.daemon_context.files_preserve.append(httpd.socket)
-
-        log.info('server listening on {addr} port {port}'.format(
-            addr=httpd.server_address[0],
-            port=httpd.server_address[1]))
+        for sock in httpd.sockets:
+            self.daemon_context.files_preserve.append(sock.fileno())
+            sn = sock.getsockname()
+            log.info('server listening on {addr} port {port}'.format(
+                addr=sn[0], port=sn[1]))
 
         try:
             with self.daemon_context:
                 log.info('listening for connections')
-                httpd.serve_forever()
+
+                # don't wire the server sockets into the IOLoop until after the
+                # fork to avoid the eventfd socket getting closed during
+                # forking
+                httpd.start()
+                IOLoop.current().start()
         except KeyboardInterrupt:
             sys.exit(0)
         except AlreadyRunningError:
@@ -242,5 +249,5 @@ class Server:
             log.exception('unhandled exception, %s', sys.exc_info())
         finally:
             log.warning('shutting down')
-            httpd.server_close()
+            httpd.stop()
             self.daemon_context.close()

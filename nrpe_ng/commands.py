@@ -62,11 +62,8 @@ class Command:
         self.cfg = cfg
         self.cmd = shlex.split(cmdstr)
 
-    def execute(self, args={}):
-        return IOLoop.current().run_sync(self._execute, args)
-
     @gen.coroutine
-    def _execute(self, args={}):
+    def execute(self, args={}):
         env = {
             'PATH': EXEC_PATH,
         }

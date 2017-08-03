@@ -17,31 +17,28 @@
 
 import logging
 import re
-import urllib.parse
 import sys
 
-from http.server import BaseHTTPRequestHandler
+from tornado import gen, web
+from tornado.escape import native_str
 
+from ..commands import CommandTimedOutError
 from ..version import __version__
 
 log = logging.getLogger(__name__)
 
 
-class NrpeHandler(BaseHTTPRequestHandler):
-    def setup(self):
-        self.cfg = self.server.cfg
-        BaseHTTPRequestHandler.setup(self)
+class NrpeHandler(web.RequestHandler):
+    def initialize(self, cfg):
+        self.cfg = cfg
 
     # Regular expression for dealing with IPv4-mapped IPv6
     IPV4_MAPPED_IPV6_RE = re.compile(r'^::ffff:(?P<ipv4>\d+\.\d+\.\d+\.\d+)$')
 
-    def parse_request(self):
-        result = BaseHTTPRequestHandler.parse_request(self)
-        if not result:
-            return False
-
+    def prepare(self):
+        # Check request against allowed hosts list
         if self.cfg.allowed_hosts:
-            host = self.client_address[0]
+            host = self.request.remote_ip
 
             # Handle IPv4-mapped IPv6 as IPv4
             mo = self.IPV4_MAPPED_IPV6_RE.search(host)
@@ -50,96 +47,58 @@ class NrpeHandler(BaseHTTPRequestHandler):
 
             # Check whether the host is listed in allowed_hosts
             if host not in self.cfg.allowed_hosts:
-                self.send_error(401, "Not in allowed_hosts: {}".format(host))
-                return False
+                self.send_error(
+                    403, reason="Not in allowed_hosts: {}".format(host))
+                return
 
-        return True
+        # Find the command in the configuration
+        cmd = self.path_kwargs['cmd']
+        command = self.cfg.commands.get(cmd)
 
-    # Regular expression for extracting the command to run
-    CMD_URI_RE = re.compile(r'^/v1/check/(?P<cmd>[^/]+)$')
-
-    def get_command(self):
-        command = None
-
-        mo = self.CMD_URI_RE.search(self.path)
-        if mo:
-            cmd = mo.group('cmd')
-            command = self.cfg.commands.get(cmd)
-            if command:
-                return command
-
-            self.send_error(404, "Unknown command: {}".format(cmd))
-            log.warning("unknown comand: {}".format(cmd))
-            return None
-
-        self.send_error(404, "Invalid request URI")
-        log.warning("invalid request URI: {}".format(self.path))
-        return None
-
-    def do_HEAD(self):
-        cmd = self.get_command()
-        if not cmd:
-            return
-
-        self.send_response(200)
-        self.send_header('Connection', 'close')
-        self.send_header('Content-Type', 'text/plain')
-        self.end_headers()
-
-    def do_GET(self):
-        cmd = self.get_command()
-        if not cmd:
-            return
-
-        try:
-            (returncode, stdout) = cmd.execute()
-        except:
-            self.send_error(502, 'Unexpected error executing command')
-            log.exception('Unexpected error {e} running {c}'.format(
-                e=sys.exc_info()[0], c=cmd))
+        if command:
+            self.cmd_name = cmd
+            self.command = command
         else:
-            self.send_response(200)
-            self.send_header('Connection', 'close')
-            self.send_header('Content-Length', len(stdout))
-            self.send_header('Content-Type', 'text/plain')
-            self.send_header('X-NRPE-Result', returncode)
-            self.end_headers()
+            self.send_error(404, reason="Unknown command: {}".format(cmd))
 
-            self.wfile.write(stdout)
+    @gen.coroutine
+    def _execute_check(self, args={}):
+        try:
+            (returncode, stdout) = yield self.command.execute(args)
+        except CommandTimedOutError:
+            self.send_error(504, reason='Command execution timed out')
+            log.error('Command timed out: {}'.format(self.cmd_name))
+        except:
+            self.send_error(500, reason='Internal command execution error')
+            log.exception('Unexpected error {e} running {c}'.format(
+                e=sys.exc_info()[0], c=self.cmd_name))
+        else:
+            self.set_header('Content-Type', 'text/plain')
+            self.set_header('X-NRPE-Result', returncode)
+            self.write(stdout)
 
-    def do_POST(self):
-        content_len = int(self.headers.get('content-length', 0))
-        post_body = self.rfile.read(content_len).decode()
+    @gen.coroutine
+    def head(self, cmd):
+        self.set_header('Content-Type', 'text/plain')
 
+    @gen.coroutine
+    def get(self, cmd):
+        yield self._execute_check()
+
+    @gen.coroutine
+    def post(self, cmd):
         if not self.cfg.dont_blame_nrpe:
-            self.send_error(401, 'Command arguments are disabled')
+            self.send_error(405, reason='Command arguments are disabled')
             log.warning('rejecting request: command arguments disabled')
             return
 
-        cmd = self.get_command()
-        if not cmd:
-            return
+        # Convert the POST arguments into a simple hash of strings. The
+        # body_arguments are otherwise a hash of lists of byte strings.
+        body_args = self.request.body_arguments
+        args = {k: native_str(body_args[k][0]) for k in body_args}
 
-        # Parse the application/x-www-form-urlencoded into a dictionary
-        # we don't use parse_qs because we don't want the values ending up as
-        # arrays
-        args = dict(urllib.parse.parse_qsl(post_body, keep_blank_values=True))
+        yield self._execute_check(args)
 
-        try:
-            (returncode, stdout) = cmd.execute(args)
-
-            self.send_response(200)
-            self.send_header('Connection', 'close')
-            self.send_header('Content-Length', len(stdout))
-            self.send_header('Content-Type', 'text/plain')
-            self.send_header('X-NRPE-Result', returncode)
-            self.end_headers()
-
-            self.wfile.write(stdout)
-        except:
-            self.send_error(502, 'Unexpected error executing command')
-            log.exception('Unexpected error running {}'.format(cmd))
-
-    def version_string(self):
-        return '{prog}/{ver}'.format(
-            prog=__name__, ver=__version__)
+    def set_default_headers(self):
+        self.set_header('Server', "{prog}/{ver}".format(
+            prog=__name__, ver=__version__))
