@@ -26,6 +26,7 @@ import sys
 from daemon.daemon import DaemonContext
 from daemon.pidfile import TimeoutPIDLockFile
 from lockfile import AlreadyLocked
+from tornado import gen
 from tornado.ioloop import IOLoop
 
 from .config import ServerConfig
@@ -142,7 +143,17 @@ class Server:
         # Set the default timeout on sockets
         socket.setdefaulttimeout(cfg.connection_timeout)
 
-    def handle_sighup(self, signal_number, stack_frame):
+    def handle_signal(self, signal_number, stack_frame):
+        log.debug('received signal {}'.format(signal_number))
+
+        if signal_number == signal.SIGHUP:
+            IOLoop.instance().add_callback_from_signal(self.sighup_callback)
+        elif signal_number == signal.SIGTERM:
+            IOLoop.instance().add_callback_from_signal(self.sigterm_callback)
+        else:
+            log.error('unexpected signal received')
+
+    def sighup_callback(self):
         log.info('received SIGHUP, reloading configuration...')
 
         try:
@@ -159,9 +170,22 @@ class Server:
             pp = pprint.PrettyPrinter(indent=4)
             pp.pprint(self.cfg._get_kwargs())
 
-    def handle_sigterm(self, signal_number, stack_frame):
+    @gen.coroutine
+    def sigterm_callback(self):
         log.info('received SIGTERM, shutting down...')
-        sys.exit(0)
+        self.httpd.stop()
+
+        io_loop = IOLoop.current()
+        deadline = io_loop.time() + self.cfg.command_timeout
+
+        while io_loop.time() < deadline:
+            if not io_loop._callbacks and not io_loop._timeouts:
+                break
+
+            log.info('waiting for requests to complete...')
+            yield gen.sleep(1)
+
+        io_loop.stop()
 
     def setup(self):
         # Determine the uid and gid to change to
@@ -182,8 +206,8 @@ class Server:
             files_preserve=[],
         )
         dctx.signal_map.update({
-            signal.SIGHUP: self.handle_sighup,
-            signal.SIGTERM: self.handle_sigterm,
+            signal.SIGHUP: self.handle_signal,
+            signal.SIGTERM: self.handle_signal,
         })
         self.daemon_context = dctx
 
