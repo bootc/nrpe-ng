@@ -204,18 +204,15 @@ class Server:
         dctx = DaemonContext(
             detach_process=self.cfg.daemon,
             files_preserve=[],
+            uid=nrpe_uid,
+            gid=nrpe_gid,
+            initgroups=True,
         )
         dctx.signal_map.update({
             signal.SIGHUP: self.handle_signal,
             signal.SIGTERM: self.handle_signal,
         })
         self.daemon_context = dctx
-
-        # Only change UID/GID if we're daemonising
-        if self.cfg.daemon:
-            dctx.uid = nrpe_uid
-            dctx.gid = nrpe_gid
-            dctx.initgroups = True
 
         # Prepare PID file
         if self.cfg.daemon:
