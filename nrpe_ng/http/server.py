@@ -78,12 +78,13 @@ class NrpeHTTPServer(HTTPServer):
         # when listening to '::' for IPv6 any-address. Tornado will listen both
         # the IPv4 and IPv6 any-address when the bind address is blank, so just
         # set the address to be empty if we encounter '::'.
-        if cfg.server_address == '::':
-            cfg.server_address = ''
+        server_address = cfg.server_address
+        if server_address == '::':
+            server_address = ''
 
         try:
             self.sockets = bind_sockets(port=cfg.server_port,
-                                        address=cfg.server_address)
+                                        address=server_address)
         except socket.error as e:
             log.error('failed to bind socket: {}'.format(e.args[1]))
             sys.exit(1)
