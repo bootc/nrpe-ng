@@ -25,6 +25,7 @@ import sys
 
 from daemon.daemon import DaemonContext
 from daemon.pidfile import TimeoutPIDLockFile
+from lockfile import AlreadyLocked
 from tornado.ioloop import IOLoop
 
 from .config import ServerConfig
@@ -236,12 +237,12 @@ class Server:
                 # forking
                 httpd.start()
                 IOLoop.current().start()
-        except KeyboardInterrupt:
-            sys.exit(0)
-        except AlreadyRunningError:
+        except AlreadyLocked:
             log.error('there is already another process running (PID {})'
                       .format(self.daemon_context.pidfile.read_pid()))
             sys.exit(1)
+        except KeyboardInterrupt:
+            pass
         except SystemExit:
             raise
         except:
