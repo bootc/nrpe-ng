@@ -58,6 +58,7 @@ setup(
         ],
     },
     install_requires=[
+        'daemon>=2',
         'requests',
         'tornado>=4.4',
     ],

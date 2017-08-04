@@ -23,12 +23,13 @@ import signal
 import socket
 import sys
 
+from daemon.daemon import DaemonContext
+from daemon.pidfile import TimeoutPIDLockFile
 from tornado.ioloop import IOLoop
 
 from .config import ServerConfig
 
 from ..config import ConfigError
-from ..daemon import DaemonContext, PidFile, AlreadyRunningError
 from ..defaults import SERVER_CONFIG
 from ..http import NrpeHTTPServer
 from ..syslog import SyslogHandler, facility as syslog_facility
@@ -188,13 +189,11 @@ class Server:
         if self.cfg.daemon:
             dctx.uid = nrpe_uid
             dctx.gid = nrpe_gid
+            dctx.initgroups = True
 
         # Prepare PID file
         if self.cfg.daemon:
-            pidfile = PidFile(self.cfg.pid_file)
-            pidfile.create()
-            dctx.files_preserve.append(pidfile.fp)
-            dctx.pidfile = pidfile
+            dctx.pidfile = TimeoutPIDLockFile(self.cfg.pid_file)
 
         # If we are not daemonising, don't redirect stdout or stderr
         if not self.cfg.daemon:
