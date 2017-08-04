@@ -70,7 +70,8 @@ class Server:
 
         # Add a syslog handler with default values
         syslog = SyslogHandler(ident=self.argparser.prog,
-                               facility=syslog_facility('daemon'))
+                               facility=syslog_facility('daemon'),
+                               formatter=logging.Formatter)
         rootlog.addHandler(syslog)
         self.log_syslog = syslog
 
