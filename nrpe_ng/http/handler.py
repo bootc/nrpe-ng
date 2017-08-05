@@ -55,6 +55,12 @@ class NrpeHandler(web.RequestHandler):
         self.set_header('Server', VERSION)
 
 
+class VersionHandler(NrpeHandler):
+    def get(self):
+        self.set_header('Content-Type', 'text/plain')
+        self.write(VERSION)
+
+
 class CommandHandler(NrpeHandler):
     def prepare(self):
         super(NrpeHandler, self).prepare()
@@ -114,6 +120,7 @@ class NrpeApplication(web.Application):
 
         super(NrpeApplication, self).__init__([
             (r'/v1/check/(?P<cmd>[^/]+)', CommandHandler),
+            (r'/v1/version', VersionHandler),
         ])
 
     def update_config(self, cfg):
