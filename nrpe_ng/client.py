@@ -29,6 +29,7 @@ except ImportError:
 
 from .config import NrpeConfig, ConfigError
 from .defaults import CLIENT_CONFIG, CLIENT_CONFIG_PATH
+from .syslog import SyslogFormatter
 from .version import __version__
 
 log = logging.getLogger(__name__)
@@ -80,6 +81,7 @@ class Client:
     def setup_logging(self):
         # Add a console handler
         console = logging.StreamHandler()
+        self.console_log = console
         rootlog.addHandler(console)
 
     def parse_args(self):
@@ -104,6 +106,13 @@ class Client:
         # In debug mode, set the log level to DEBUG
         if cfg.debug:
             rootlog.setLevel(logging.DEBUG)
+        else:
+            # Silence the requests library as we catch its exceptions and
+            # output our own summary messages
+            logging.getLogger('requests').setLevel(logging.CRITICAL)
+
+            # Don't output exception stack traces
+            self.console_log.formatter = SyslogFormatter()
 
         self.cfg = cfg
 
@@ -197,10 +206,9 @@ class Client:
                 sys.exit(NAGIOS_UNKNOWN)
             else:
                 sys.exit(NAGIOS_CRITICAL)
-
         except requests.exceptions.RequestException as e:
             log.error("{host}: {err}".format(
-                host=self.cfg.host, err=e.args[0]))
+                host=self.cfg.host, err=e), exc_info=True)
             sys.exit(NAGIOS_UNKNOWN)
 
         if r.status_code != 200:
