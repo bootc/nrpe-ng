@@ -26,11 +26,12 @@ from ..commands import CommandTimedOutError
 from ..version import __version__
 
 log = logging.getLogger(__name__)
+VERSION = "nrpe-ng/{ver}".format(ver=__version__)
 
 
 class NrpeHandler(web.RequestHandler):
-    def initialize(self, cfg):
-        self.cfg = cfg
+    def initialize(self):
+        self.cfg = self.application.cfg
 
     # Regular expression for dealing with IPv4-mapped IPv6
     IPV4_MAPPED_IPV6_RE = re.compile(r'^::ffff:(?P<ipv4>\d+\.\d+\.\d+\.\d+)$')
@@ -47,19 +48,26 @@ class NrpeHandler(web.RequestHandler):
 
             # Check whether the host is listed in allowed_hosts
             if host not in self.cfg.allowed_hosts:
-                self.send_error(
-                    403, reason="Not in allowed_hosts: {}".format(host))
-                return
+                raise web.HTTPError(403, "Not in allowed_hosts: {}".format(
+                    host))
+
+    def set_default_headers(self):
+        self.set_header('Server', VERSION)
+
+
+class CommandHandler(NrpeHandler):
+    def prepare(self):
+        super(NrpeHandler, self).prepare()
 
         # Find the command in the configuration
         cmd = self.path_kwargs['cmd']
         command = self.cfg.commands.get(cmd)
 
-        if command:
-            self.cmd_name = cmd
-            self.command = command
-        else:
-            self.send_error(404, reason="Unknown command: {}".format(cmd))
+        if not command:
+            raise web.HTTPError(404, "Unknown command: {}".format(cmd))
+
+        self.cmd_name = cmd
+        self.command = command
 
     @gen.coroutine
     def _execute_check(self, args={}):
@@ -99,6 +107,14 @@ class NrpeHandler(web.RequestHandler):
 
         yield self._execute_check(args)
 
-    def set_default_headers(self):
-        self.set_header('Server', "{prog}/{ver}".format(
-            prog=__name__, ver=__version__))
+
+class NrpeApplication(web.Application):
+    def __init__(self, cfg):
+        self.cfg = cfg
+
+        super(NrpeApplication, self).__init__([
+            (r'/v1/check/(?P<cmd>[^/]+)', CommandHandler),
+        ])
+
+    def update_config(self, cfg):
+        self.cfg = cfg

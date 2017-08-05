@@ -20,11 +20,10 @@ import socket
 import ssl
 import sys
 
-from tornado import web
 from tornado.httpserver import HTTPServer
 from tornado.netutil import bind_sockets
 
-from .handler import NrpeHandler
+from .handler import NrpeApplication
 
 log = logging.getLogger(__name__)
 
@@ -63,13 +62,11 @@ class NrpeHTTPServer(HTTPServer):
                       .format(e.args[1]))
             sys.exit(1)
 
-        app = web.Application([
-            (r'/v1/check/(?P<cmd>[^/]+)$', NrpeHandler, {'cfg': cfg}),
-        ])
+        self.app = NrpeApplication(cfg)
 
         # Set up the HTTPServer instance
         super(NrpeHTTPServer, self).initialize(
-            app, no_keep_alive=True, ssl_options=ssl_context,
+            self.app, no_keep_alive=True, ssl_options=ssl_context,
             idle_connection_timeout=cfg.connection_timeout,
             body_timeout=cfg.connection_timeout)
 
@@ -101,5 +98,7 @@ class NrpeHTTPServer(HTTPServer):
 
     def update_config(self, cfg):
         self.cfg = cfg
+
+        self.app.update_config(cfg)
 
         # TODO: What options can we update dynamically?
