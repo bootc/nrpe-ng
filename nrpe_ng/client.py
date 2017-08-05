@@ -207,8 +207,21 @@ class Client:
             else:
                 sys.exit(NAGIOS_CRITICAL)
         except requests.exceptions.RequestException as e:
+            # Why do I have to do this?! Such insanity should not be necessary
+            # to obtain the actual underlying exception that caused the request
+            # to fail.
+            wrapped = e
+            while wrapped.__cause__ or wrapped.__context__:
+                wrapped = wrapped.__cause__ or wrapped.__context__
+
+            # This additional insanity is now needed to get a nice textual
+            # error that's presentable to a user.
+            message = str(wrapped)
+            if isinstance(wrapped, OSError):
+                message = wrapped.strerror
+
             log.error("{host}: {err}".format(
-                host=self.cfg.host, err=e), exc_info=True)
+                host=self.cfg.host, err=message), exc_info=True)
             sys.exit(NAGIOS_UNKNOWN)
 
         if r.status_code != 200:
