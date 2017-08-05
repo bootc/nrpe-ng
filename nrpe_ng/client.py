@@ -20,6 +20,7 @@ import logging
 import os.path
 import requests
 import sys
+import urllib.parse
 import warnings
 
 try:
@@ -70,7 +71,7 @@ class Client:
         parser.add_argument('-u', action='store_true', dest='timeout_unknown',
                             help='socket timeouts return UNKNOWN state '
                             'instead of CRITICAL')
-        parser.add_argument('-c', dest='command', required=True,
+        parser.add_argument('-c', dest='command', default=None,
                             help='the command to run run on the remote host')
         parser.add_argument('-a', dest='args', nargs='+', action='append',
                             help='arguments that should be passed to the '
@@ -117,11 +118,16 @@ class Client:
         self.cfg = cfg
 
     def make_request(self):
+        if self.cfg.command:
+            command = urllib.parse.quote_plus(self.cfg.command)
+            url = "https://{host}:{port}/v1/check/{command}".format(
+                host=self.cfg.host, port=self.cfg.port, command=command)
+        else:
+            url = "https://{host}:{port}/v1/version".format(
+                host=self.cfg.host, port=self.cfg.port)
+
         req = {
-            'url': "https://{host}:{port}/v1/check/{command}".format(
-                host=self.cfg.host,
-                port=self.cfg.port,
-                command=self.cfg.command),
+            'url': url,
             'headers': {
                 'User-Agent': "{prog}/{ver}".format(
                     prog=self.argparser.prog,
@@ -223,6 +229,22 @@ class Client:
             log.error("{host}: {err}".format(
                 host=self.cfg.host, err=message), exc_info=True)
             sys.exit(NAGIOS_UNKNOWN)
+
+        # When no command is requested, this is a version request.
+        if self.cfg.command is None:
+            if r.status_code == 200:
+                # nrpe-ng 0.2 has a version endpoint
+                print(r.text)
+                sys.exit(NAGIOS_OK)
+
+            try:
+                # older versions don't, but they set the Server header. This
+                # might also be helpful if the request fails.
+                print(r.headers['Server'])
+                sys.exit(NAGIOS_OK)
+            except KeyError:
+                print("unknown version: {}".format(r.reason))
+                sys.exit(NAGIOS_WARNING)
 
         if r.status_code != 200:
             print(r.reason)
