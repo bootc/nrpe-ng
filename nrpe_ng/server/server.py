@@ -33,7 +33,7 @@ from .config import ServerConfig
 
 from ..config import ConfigError
 from ..defaults import SERVER_CONFIG
-from ..http import NrpeHTTPServer
+from ..http.server import NrpeHTTPServer
 from ..syslog import SyslogHandler, facility as syslog_facility
 from ..version import __version__
 
