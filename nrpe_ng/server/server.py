@@ -1,5 +1,5 @@
 # This file is part of nrpe-ng.
-# Copyright (C) 2014  Chris Boot <bootc@bootc.net>
+# Copyright (C) 2014-17  Chris Boot <bootc@bootc.net>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -46,7 +46,7 @@ class Server:
 
     def __init__(self):
         epilog = """
-        Copyright (C) 2014  Chris Boot <bootc@bootc.net>
+        Copyright (C) 2014-17  Chris Boot <bootc@bootc.net>
         """
         parser = argparse.ArgumentParser(description=self.__doc__,
                                          epilog=epilog)
