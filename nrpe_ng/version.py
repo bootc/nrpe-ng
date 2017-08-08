@@ -16,4 +16,4 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 # This should be the only line in this file.
-__version__ = '0.2.0-dev1'
+__version__ = '0.2.0'
